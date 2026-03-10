@@ -1,0 +1,51 @@
+[project]
+name = "cowl"
+description = "A Python library to work with OWL ontologies"
+version = "0.8.0"
+authors = [
+    { name = "Davide Loconte", email = "davide.loconte@poliba.it" },
+    { name = "Ivano Bilenchi", email = "ivano.bilenchi@poliba.it" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.urls]
+Homepage = "https://swot.sisinflab.poliba.it/pycowl"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "cython"]
+build-backend = "setuptools.build_meta"
+
+[tool.cython-lint]
+max-line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN101",   # missing-type-self
+    "ANN102",   # missing-type-cls
+    "BLE001",   # blind-except
+    "D203",     # one-blank-line-before-class
+    "D212",     # multi-line-summary-first-line
+    "PD",       # pandas
+    "PLC0414",  # useless-import-alias
+    "PLR09",    # too-many-*
+]
+exclude = ["test/*.py"]
+isort.combine-as-imports = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+cowl = ["*.so", "*.dylib", "*.dll"]
+
+[tool.setuptools.exclude-package-data]
+cowl = ["*.c"]

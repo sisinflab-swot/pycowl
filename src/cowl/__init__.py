@@ -1,9 +1,6 @@
 """Exported symbols."""
 
-from . import _loader as _loader
-from .c import init as _native_libs_init
+from . import c as c  # Trigger native library initialization.
 from .ontology import Ontology
-
-_native_libs_init()
 
 __all__ = ["Ontology"]

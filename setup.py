@@ -29,9 +29,14 @@ PKG_DIR = ROOT_DIR / "src" / "cowl"
 if sys.platform == "win32":
     CONFIG_ARGS: list[str] = ["-A", "x64"]
     BUILD_ARGS: list[str] = ["--config", BUILD_TYPE]
+    RPATH_LIBS = []
 else:
     CONFIG_ARGS: list[str] = []
     BUILD_ARGS: list[str] = ["--parallel"]
+    if sys.platform == "darwin":
+        RPATH_LIBS = ["@loader_path"]
+    else:
+        RPATH_LIBS = ["$ORIGIN"]
 
 
 SHARED_LIB_EXTS = {".so", ".dylib", ".dll"}
@@ -120,6 +125,7 @@ def extensions() -> list[Extension]:
             define_macros=defines,
             include_dirs=include_dirs,
             library_dirs=lib_dirs,
+            runtime_library_dirs=RPATH_LIBS,
             extra_objects=import_libs,
             language="c",
         )

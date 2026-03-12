@@ -55,11 +55,6 @@ def find(directory: Path, exts: set[str]) -> list[Path]:
     return [p for p in directory.rglob("*") if p.suffix.lower() in exts]
 
 
-def import_libs() -> list[Path]:
-    """Find the paths to the import libraries."""
-    return find(NATIVE_BUILD_DIR, IMPORT_LIB_EXTS)
-
-
 def cmake(*args: str) -> None:
     """Run a CMake command."""
     subprocess.run(["cmake", *args], check=True)  # noqa: S603, S607
@@ -91,7 +86,7 @@ def build() -> None:
         "cowl",
     )
     for lib_path in find(NATIVE_BUILD_DIR, SHARED_LIB_EXTS):
-        lib_path.copy_into(PKG_DIR)
+        shutil.copy(lib_path, PKG_DIR)
 
 
 def clean() -> None:

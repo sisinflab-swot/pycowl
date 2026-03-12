@@ -38,7 +38,7 @@ ignore = [
     "PLC0414",  # useless-import-alias
     "PLR09",    # too-many-*
 ]
-exclude = ["test/*.py"]
+exclude = ["tests/*.py"]
 isort.combine-as-imports = true
 
 [tool.setuptools.packages.find]

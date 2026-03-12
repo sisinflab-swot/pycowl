@@ -39,3 +39,4 @@ cdef extern from "cowl_ontology.h":
     CowlOntology *cowl_ontology()
     CowlOntology *cowl_ontology_at_path(UString path)
     cowl_ret cowl_ontology_to_stream(CowlOntology *onto, UOStream *stream)
+    cowl_ret cowl_ontology_to_path(CowlOntology *onto, UString path)

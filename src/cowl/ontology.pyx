@@ -6,6 +6,7 @@ from cowl.c cimport (
     CowlOntology,
     cowl_ontology,
     cowl_ontology_at_path,
+    cowl_ontology_to_path,
     cowl_ontology_to_stream,
 )
 from cowl.object cimport Object
@@ -18,6 +19,7 @@ from cowl.ulib cimport (
     uostream_deinit,
     ustrbuf,
     ustrbuf_to_py,
+    ustring_deinit,
     ustring_from_py,
 )
 
@@ -42,10 +44,15 @@ cdef class Ontology(Object):
     def __init__(self, ptr: Ptr):
         super().__init__(ptr)
 
-    def as_string(self) -> str:
+    def __str__(self) -> str:
         cdef UStrBuf buf = ustrbuf()
         cdef UOStream stream
         uostream_to_strbuf(&stream, &buf)
         cowl_ontology_to_stream(<CowlOntology *>self.ptr.get(), &stream)
         uostream_deinit(&stream)
         return ustrbuf_to_py(&buf)
+
+    def to_path(self, path: Path | str) -> None:
+        cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
+        cowl_ontology_to_path(<CowlOntology *>self.ptr.get(), path_str)
+        ustring_deinit(&path_str)

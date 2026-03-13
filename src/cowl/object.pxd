@@ -1,4 +1,4 @@
-from cowl.ptr cimport Ptr
+from .ptr cimport Ptr
 
 
 cdef class Object:

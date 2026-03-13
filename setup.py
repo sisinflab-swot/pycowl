@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterable, Iterator
 from pathlib import Path
 from typing import cast
 
@@ -22,7 +23,8 @@ NATIVE_LIB_DIR = ROOT_DIR / "lib" / "cowl"
 NATIVE_BUILD_DIR = NATIVE_LIB_DIR / "build"
 NATIVE_INCLUDE_DIRS = [NATIVE_LIB_DIR / "include", NATIVE_LIB_DIR / "lib" / "ulib" / "include"]
 BUILD_DIR = ROOT_DIR / "build"
-PKG_DIR = ROOT_DIR / "src" / "cowl"
+SRC_DIR = ROOT_DIR / "src"
+PKG_DIR = SRC_DIR / "cowl"
 
 # Build config
 
@@ -39,8 +41,8 @@ else:
         RPATH_LIBS = ["$ORIGIN"]
 
 
-SHARED_LIB_EXTS = {".so", ".dylib", ".dll"}
-IMPORT_LIB_EXTS = {".so", ".dylib", ".lib"}
+SHARED_LIB_GLOBS = ("*.so", "*.dylib", "*.dll")
+IMPORT_LIB_GLOBS = ("*.so", "*.dylib", "*.lib")
 
 NATIVE_DEFINES = [
     ("COWL_BUILDING", "1"),
@@ -55,9 +57,29 @@ NATIVE_DEFINES = [
 # Build logic
 
 
-def find(directory: Path, exts: set[str]) -> list[Path]:
+def find(directory: Path, globs: str | Iterable[str]) -> Iterator[Path]:
     """Find files in a directory with specific extensions."""
-    return [p for p in directory.rglob("*") if p.suffix.lower() in exts]
+    if isinstance(globs, str):
+        globs = (globs,)
+    for glob in globs:
+        yield from directory.rglob(glob)
+
+
+def rm(*args: Path) -> None:
+    """Remove files or directories."""
+    for path in args:
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        elif path.is_file():
+            path.unlink()
+
+
+def cp(src: Path, dst: Path) -> None:
+    """Copy a file or directory."""
+    if src.is_dir():
+        shutil.copytree(src, dst, dirs_exist_ok=True)
+    else:
+        shutil.copy(src, dst)
 
 
 def cmake(*args: str) -> None:
@@ -90,17 +112,15 @@ def build() -> None:
         "--target",
         "cowl",
     )
-    for lib_path in find(NATIVE_BUILD_DIR, SHARED_LIB_EXTS):
-        shutil.copy(lib_path, PKG_DIR)
+    for lib_path in find(NATIVE_BUILD_DIR, SHARED_LIB_GLOBS):
+        cp(lib_path, PKG_DIR)
 
 
 def clean() -> None:
     """Clean up build artifacts."""
-    for dir_path in (NATIVE_BUILD_DIR, BUILD_DIR):
-        shutil.rmtree(dir_path, ignore_errors=True)
-
-    for path in find(PKG_DIR, SHARED_LIB_EXTS.union({".c"})):
-        path.unlink()
+    rm(BUILD_DIR, NATIVE_BUILD_DIR, PKG_DIR.with_suffix(".egg-info"))
+    rm(*find(PKG_DIR, ("*.c", *SHARED_LIB_GLOBS)))
+    rm(*find(ROOT_DIR, "__pycache__"))
 
 
 def build_native_libs() -> None:
@@ -114,7 +134,7 @@ def build_native_libs() -> None:
 
 def extensions() -> list[Extension]:
     """Cython extensions to build."""
-    import_libs = [str(p) for p in find(NATIVE_BUILD_DIR, IMPORT_LIB_EXTS)]
+    import_libs = [str(p) for p in find(NATIVE_BUILD_DIR, IMPORT_LIB_GLOBS)]
     include_dirs = [str(p) for p in NATIVE_INCLUDE_DIRS]
     lib_dirs = [str(PKG_DIR)]
     defines = cast("list[tuple[str, str | None]]", NATIVE_DEFINES)

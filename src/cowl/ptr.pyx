@@ -1,23 +1,24 @@
-from cowl.c cimport cowl_retain, cowl_release
+from .c cimport cowl_retain, cowl_release
 
 
 cdef class Ptr:
 
     @staticmethod
-    cdef Ptr retain(void *ptr):
-        p = Ptr()
-        p.ptr = cowl_retain(ptr)
+    cdef Ptr wrap(void *ptr):
+        cdef Ptr p = Ptr.__new__(Ptr)
+        p.raw = ptr
         return p
 
     @staticmethod
-    cdef Ptr wrap(void *ptr):
-        p = Ptr()
-        p.ptr = ptr
-        return p
+    cdef Ptr retain(void *ptr):
+        return Ptr.wrap(cowl_retain(ptr))
 
     def __cinit__(self):
-        self.ptr = NULL
+        self.raw = NULL
+
+    def __init__(self):
+        raise TypeError("Ptr cannot be instantiated directly.")
 
     def __dealloc__(self):
-        if self.ptr:
-            cowl_release(self.ptr)
+        if self.raw:
+            cowl_release(self.raw)

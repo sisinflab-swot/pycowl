@@ -1,4 +1,4 @@
-from cowl.ulib cimport (
+from .ulib cimport (
     UStrBuf,
     UString,
     ustrbuf_data,
@@ -16,13 +16,13 @@ cdef UString ustring_from_py(str pystr):
     return ustring_copy(<const char *>encoded, len(pystr))
 
 
-cdef str ustring_to_py(UString *str, bool deinit = True):
-    cdef UString val = str[0]
+cdef str ustring_to_py(UString *ustr, bool deinit = True):
+    cdef UString val = ustr[0]
     try:
         ret: str = ustring_data(val)[:ustring_length(val)].decode("utf-8")
     finally:
         if deinit:
-            ustring_deinit(str)
+            ustring_deinit(ustr)
     return ret
 
 cdef str ustrbuf_to_py(UStrBuf *buf, bool deinit = True):

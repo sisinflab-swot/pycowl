@@ -1,11 +1,8 @@
 cdef class Ptr:
-    cdef void *ptr
+    cdef void *raw
 
     @staticmethod
     cdef Ptr retain(void *ptr)
 
     @staticmethod
     cdef Ptr wrap(void *ptr)
-
-    cdef inline void *get(self):
-        return self.ptr

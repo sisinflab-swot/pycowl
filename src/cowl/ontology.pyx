@@ -2,16 +2,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cowl.c cimport (
+from .c cimport (
+    CowlIterator,
     CowlOntology,
+    CowlVector,
+    UVec_CowlObjectPtr,
+    cowl_iterator_vec,
     cowl_ontology,
     cowl_ontology_at_path,
+    cowl_ontology_iterate_axioms,
     cowl_ontology_to_path,
     cowl_ontology_to_stream,
+    cowl_vector,
+    uvec_CowlObjectPtr,
 )
-from cowl.object cimport Object
-from cowl.ptr cimport Ptr
-from cowl.ulib cimport (
+from .collection cimport Collection
+from .object cimport Object
+from .ptr cimport Ptr
+from .ulib cimport (
     UOStream,
     UStrBuf,
     UString,
@@ -48,11 +56,19 @@ cdef class Ontology(Object):
         cdef UStrBuf buf = ustrbuf()
         cdef UOStream stream
         uostream_to_strbuf(&stream, &buf)
-        cowl_ontology_to_stream(<CowlOntology *>self.ptr.get(), &stream)
+        cowl_ontology_to_stream(<CowlOntology *>self.ptr.raw, &stream)
         uostream_deinit(&stream)
         return ustrbuf_to_py(&buf)
 
     def to_path(self, path: Path | str) -> None:
         cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
-        cowl_ontology_to_path(<CowlOntology *>self.ptr.get(), path_str)
+        cowl_ontology_to_path(<CowlOntology *>self.ptr.raw, path_str)
         ustring_deinit(&path_str)
+
+    def get_axioms(self) -> Collection:
+        cdef CowlOntology *onto = <CowlOntology *>self.ptr.raw
+        cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
+        cdef CowlIterator iter = cowl_iterator_vec(&vec, <bint>True)
+        cowl_ontology_iterate_axioms(onto, &iter)
+        cdef CowlVector *ret = cowl_vector(&vec)
+        return Collection(Ptr.wrap(ret))

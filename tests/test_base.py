@@ -23,9 +23,8 @@ class BasicTest(unittest.TestCase):
         iri_a = cowl.IRI(iri_str)
         iri_b = cowl.IRI(ns, rem)
 
-        assert iri_a == iri_b
-        assert iri_a.namespace == iri_b.namespace == ns
-        assert iri_a.remainder == iri_b.remainder == rem
+        assert iri_a.namespace() == iri_b.namespace() == ns
+        assert iri_a.remainder() == iri_b.remainder() == rem
         assert str(iri_a) == str(iri_b) == iri_str
 
     def test_ontology(self) -> None:

@@ -1,5 +1,5 @@
-from .primitive cimport Primitive
+from .object cimport Object
 
 
-cdef class IRI(Primitive):
+cdef class IRI(Object):
     pass

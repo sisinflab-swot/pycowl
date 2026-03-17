@@ -10,6 +10,48 @@ cpdef enum Ret:
     ERR_IO = ulib_ret_builtin.ULIB_ERR_IO
 
 
+cdef extern from "cowl_annot_prop.h":
+    ctypedef struct CowlAnnotProp:
+        pass
+
+    cdef CowlAnnotProp *cowl_annot_prop(CowlIRI *iri)
+
+
+cdef extern from "cowl_class.h":
+    ctypedef struct CowlClass:
+        pass
+
+    cdef CowlClass *cowl_class(CowlIRI *iri)
+
+
+cdef extern from "cowl_data_prop.h":
+    ctypedef struct CowlDataProp:
+        pass
+
+    cdef CowlDataProp *cowl_data_prop(CowlIRI *iri)
+
+
+cdef extern from "cowl_datatype.h":
+    ctypedef struct CowlDatatype:
+        pass
+
+    cdef CowlDatatype *cowl_datatype(CowlIRI *iri)
+
+
+cdef extern from "cowl_named_ind.h":
+    ctypedef struct CowlNamedInd:
+        pass
+
+    cdef CowlNamedInd *cowl_named_ind(CowlIRI *iri)
+
+
+cdef extern from "cowl_obj_prop.h":
+    ctypedef struct CowlObjProp:
+        pass
+
+    cdef CowlObjProp *cowl_obj_prop(CowlIRI *iri)
+
+
 cdef extern from "cowl_config.h":
     void cowl_init()
 
@@ -159,6 +201,9 @@ cdef extern from "cowl_object.h":
     int cowl_hash(void *object)
     UString cowl_to_ustring(void *object)
     UString cowl_to_debug_ustring(void *object)
+    CowlIRI *cowl_get_iri(void *object)
+    CowlString *cowl_get_ns(void *object)
+    CowlString *cowl_get_rem(void *object)
     CowlVector *cowl_get_annot(void *object)
 
 

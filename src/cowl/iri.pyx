@@ -1,31 +1,19 @@
 from .c cimport (
-    CowlIRI,
     CowlString,
     cowl_iri,
     cowl_iri_from_string,
-    cowl_iri_get_ns,
-    cowl_iri_get_rem,
     cowl_release,
     cowl_string_from_py,
-    cowl_string_to_py,
 )
-from .primitive cimport Primitive
+from .object cimport Object
 from .ptr cimport Ptr
 from .ulib cimport UString, ustring_from_py, ustring_deinit
 
 
-cdef class IRI(Primitive):
-
-    @property
-    def namespace(self) -> str:
-        return cowl_string_to_py(cowl_iri_get_ns(<CowlIRI *>self.ptr.raw))
-
-    @property
-    def remainder(self) -> str:
-        return cowl_string_to_py(cowl_iri_get_rem(<CowlIRI *>self.ptr.raw))
+cdef class IRI(Object):
 
     def __str__(self) -> str:
-        return self.namespace + self.remainder
+        return self.namespace() + self.remainder()
 
     def __init__(self, prefix: str, suffix: str | None = None) -> None:
         cdef void *ptr

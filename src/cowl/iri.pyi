@@ -1,8 +1,4 @@
-from .primitive import Primitive
+from .object import Object
 
-class IRI(Primitive):
-    @property
-    def namespace(self) -> str: ...
-    @property
-    def remainder(self) -> str: ...
+class IRI(Object):
     def __init__(self, prefix: str, suffix: str | None = None) -> None: ...

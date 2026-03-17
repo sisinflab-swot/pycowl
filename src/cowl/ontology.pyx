@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from . cimport factory
 from .c cimport (
     CowlIterator,
     CowlOntology,
-    CowlVector,
     UVec_CowlObjectPtr,
     cowl_iterator_vec,
     cowl_ontology,
@@ -34,11 +34,6 @@ from .ulib cimport (
 cdef class Ontology(Object):
 
     @classmethod
-    def empty(cls) -> Ontology:
-        cdef void *ptr = <void *>cowl_ontology()
-        return Ontology(Ptr.wrap(ptr))
-
-    @classmethod
     def at_path(cls, path: Path | str) -> Ontology:
         cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
         cdef void *ptr = <void *>cowl_ontology_at_path(path_str)
@@ -47,10 +42,10 @@ cdef class Ontology(Object):
             msg = f"Failed to load ontology at path: {path}"
             raise ValueError(msg)
 
-        return Ontology(Ptr.wrap(ptr))
+        return <Ontology>factory.wrap(ptr)
 
-    def __init__(self, ptr: Ptr):
-        super().__init__(ptr)
+    def __init__(self) -> None:
+        super().__init__(Ptr.wrap(<void *>cowl_ontology()))
 
     def __str__(self) -> str:
         cdef UStrBuf buf = ustrbuf()
@@ -68,7 +63,6 @@ cdef class Ontology(Object):
     def get_axioms(self) -> Collection:
         cdef CowlOntology *onto = <CowlOntology *>self.ptr.raw
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
-        cdef CowlIterator iter = cowl_iterator_vec(&vec, <bint>True)
+        cdef CowlIterator iter = cowl_iterator_vec(&vec, <bint>False)
         cowl_ontology_iterate_axioms(onto, &iter)
-        cdef CowlVector *ret = cowl_vector(&vec)
-        return Collection(Ptr.wrap(ret))
+        return <Collection>factory.wrap(<void *>cowl_vector(&vec))

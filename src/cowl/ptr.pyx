@@ -22,3 +22,6 @@ cdef class Ptr:
     def __dealloc__(self):
         if self.raw:
             cowl_release(self.raw)
+
+    cdef Ptr copy(self):
+        return Ptr.retain(self.raw)

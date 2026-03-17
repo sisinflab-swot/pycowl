@@ -1,8 +1,16 @@
-from __future__ import annotations
+from .c cimport (
+    cowl_equals,
+    cowl_get_annot,
+    cowl_hash,
+    cowl_to_debug_ustring,
+    cowl_to_ustring,
+)
 
-from .c cimport cowl_equals, cowl_hash, cowl_to_debug_ustring, cowl_to_ustring
+from .collection cimport Collection
 from .ptr cimport Ptr
 from .ulib cimport UString, ustring_to_py
+
+from . cimport factory
 
 
 cdef class Object:
@@ -25,3 +33,6 @@ cdef class Object:
 
     def __hash__(self) -> int:
         return cowl_hash(self.ptr.raw)
+
+    def get_annotations(self) -> Collection:
+        return <Collection>factory.retain(<void *>cowl_get_annot(self.ptr.raw))

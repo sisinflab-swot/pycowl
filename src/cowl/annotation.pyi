@@ -1,0 +1,3 @@
+from .object import Object
+
+class Annotation(Object): ...

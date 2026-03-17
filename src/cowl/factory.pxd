@@ -1,4 +1,4 @@
 from .object cimport Object
 
-cdef Object new(void *ptr)
-cdef Object retained(void *ptr)
+cdef Object wrap(void *ptr)
+cdef Object retain(void *ptr)

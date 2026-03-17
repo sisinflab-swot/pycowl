@@ -6,3 +6,5 @@ cdef class Ptr:
 
     @staticmethod
     cdef Ptr wrap(void *ptr)
+
+    cdef Ptr copy(self)

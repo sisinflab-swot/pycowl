@@ -3,13 +3,9 @@ from collections.abc import Iterator
 from . cimport factory
 from .c cimport CowlVector, cowl_vector_contains, cowl_vector_count, cowl_vector_get_item
 from .object cimport Object
-from .ptr cimport Ptr
 
 
 cdef class Collection(Object):
-
-    def __init__(self, ptr: Ptr):
-        super().__init__(ptr)
 
     def __len__(self) -> int:
         return cowl_vector_count(<CowlVector *>self.ptr.raw)
@@ -23,4 +19,4 @@ cdef class Collection(Object):
         cdef CowlVector *vec = <CowlVector *>self.ptr.raw
         cdef int count = cowl_vector_count(vec)
         for i in range(count):
-            yield factory.retained(cowl_vector_get_item(vec, i))
+            yield factory.retain(cowl_vector_get_item(vec, i))

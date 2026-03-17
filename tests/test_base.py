@@ -12,10 +12,24 @@ TEST_ONTO_PATH = RES_DIR / "test_onto.owl"
 
 
 class BasicTest(unittest.TestCase):
-    """Tests if the library is installed and can be imported."""
+    """Basic data model tests."""
 
-    def test_print(self) -> None:
-        """Test if the library can be imported and used."""
+    def test_iri(self) -> None:
+        """IRI tests."""
+        ns = "http://example.org/test#"
+        rem = "MyClass"
+        iri_str = ns + rem
+
+        iri_a = cowl.IRI(iri_str)
+        iri_b = cowl.IRI(ns, rem)
+
+        assert iri_a == iri_b
+        assert iri_a.namespace == iri_b.namespace == ns
+        assert iri_a.remainder == iri_b.remainder == rem
+        assert str(iri_a) == str(iri_b) == iri_str
+
+    def test_ontology(self) -> None:
+        """Test ontology parsing, serialization, and querying."""
         orig = cowl.Ontology.at_path(TEST_ONTO_PATH)
 
         with TemporaryDirectory() as tmp:

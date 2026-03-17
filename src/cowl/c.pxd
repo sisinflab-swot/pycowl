@@ -10,11 +10,32 @@ cpdef enum Ret:
     ERR_IO = ulib_ret_builtin.ULIB_ERR_IO
 
 
+cdef extern from "cowl_annotation.h":
+
+    ctypedef struct CowlAnnotation:
+        pass
+
+    ctypedef struct CowlAnnotValue:
+        pass
+
+    cdef CowlAnnotation *cowl_annotation(CowlAnnotProp *prop, void *value, CowlVector *annot)
+    cdef CowlAnnotProp *cowl_annotation_get_prop(CowlAnnotation *annot)
+    cdef CowlAnnotValue *cowl_annotation_get_value(CowlAnnotation *annot)
+    cdef CowlVector *cowl_annotation_get_annot(CowlAnnotation *annot)
+
+
 cdef extern from "cowl_annot_prop.h":
     ctypedef struct CowlAnnotProp:
         pass
 
     cdef CowlAnnotProp *cowl_annot_prop(CowlIRI *iri)
+
+
+cdef extern from "cowl_anon_ind.h":
+    ctypedef struct CowlAnonInd:
+        pass
+
+    cdef CowlAnonInd *cowl_anon_ind(CowlString *id)
 
 
 cdef extern from "cowl_class.h":
@@ -36,6 +57,16 @@ cdef extern from "cowl_datatype.h":
         pass
 
     cdef CowlDatatype *cowl_datatype(CowlIRI *iri)
+
+
+cdef extern from "cowl_literal.h":
+    ctypedef struct CowlLiteral:
+        pass
+
+    cdef CowlLiteral *cowl_literal(CowlDatatype *dt, CowlString *value, CowlString *lang)
+    cdef CowlDatatype *cowl_literal_get_datatype(CowlLiteral *literal)
+    cdef CowlString *cowl_literal_get_value(CowlLiteral *literal)
+    cdef CowlString *cowl_literal_get_lang(CowlLiteral *literal)
 
 
 cdef extern from "cowl_named_ind.h":

@@ -60,7 +60,7 @@ cdef class Ontology(Object):
         cowl_ontology_to_path(<CowlOntology *>self.ptr.raw, path_str)
         ustring_deinit(&path_str)
 
-    def get_axioms(self) -> Collection:
+    def axioms(self) -> Collection:
         cdef CowlOntology *onto = <CowlOntology *>self.ptr.raw
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, <bint>False)

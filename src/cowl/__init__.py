@@ -9,6 +9,7 @@ from .data_property import DataProperty
 from .datatype import Datatype
 from .entity import Entity
 from .iri import IRI
+from .literal import Literal
 from .named_individual import NamedIndividual
 from .object import Object
 from .object_property import ObjectProperty
@@ -26,6 +27,7 @@ __all__ = [
     "DataProperty",
     "Datatype",
     "Entity",
+    "Literal",
     "NamedIndividual",
     "Object",
     "ObjectProperty",

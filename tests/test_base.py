@@ -27,6 +27,23 @@ class BasicTest(unittest.TestCase):
         assert iri_a.remainder() == iri_b.remainder() == rem
         assert str(iri_a) == str(iri_b) == iri_str
 
+    def test_literal(self) -> None:
+        """Literal tests."""
+        value = "Hello, world!"
+        lang = "en"
+        dt = cowl.Datatype("http://www.w3.org/2001/XMLSchema#string")
+        lang_dt = cowl.Datatype("http://www.w3.org/1999/02/22-rdf-syntax-ns#langString")
+
+        lit_a = cowl.Literal(value)
+        lit_b = cowl.Literal(value, datatype=dt)
+        lit_c = cowl.Literal(value, language=lang)
+
+        assert lit_a.value() == lit_b.value() == lit_c.value() == value
+        assert lit_a.datatype() == lit_b.datatype() == dt
+        assert lit_c.datatype() == lang_dt
+        assert lit_a.language() == lit_b.language() == None
+        assert lit_c.language() == lang
+
     def test_ontology(self) -> None:
         """Test ontology parsing, serialization, and querying."""
         orig = cowl.Ontology.at_path(TEST_ONTO_PATH)
@@ -37,10 +54,15 @@ class BasicTest(unittest.TestCase):
             other = cowl.Ontology.at_path(tmp_path)
 
         assert str(orig) == str(other)
+        assert orig.iri() == other.iri()
 
-        orig_axioms = set(orig.get_axioms())
-        other_axioms = set(other.get_axioms())
+        orig_axioms = set(orig.axioms())
+        other_axioms = set(other.axioms())
         assert orig_axioms == other_axioms
+
+        orig_annotations = set(orig.annotations())
+        other_annotations = set(other.annotations())
+        assert orig_annotations == other_annotations
 
 
 if __name__ == "__main__":

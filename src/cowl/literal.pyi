@@ -1,0 +1,13 @@
+from .datatype import Datatype
+from .object import Object
+
+class Literal(Object):
+    def __init__(
+        self,
+        value: str,
+        datatype: Datatype | None = None,
+        language: str | None = None,
+    ) -> None: ...
+    def datatype(self) -> Datatype: ...
+    def value(self) -> str: ...
+    def language(self) -> str | None: ...

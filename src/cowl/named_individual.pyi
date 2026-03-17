@@ -1,3 +1,0 @@
-from .entity import Entity
-
-class NamedIndividual(Entity): ...

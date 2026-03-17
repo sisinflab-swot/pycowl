@@ -1,0 +1,3 @@
+from ._entity import Entity
+
+class Datatype(Entity): ...

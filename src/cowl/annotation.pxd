@@ -1,5 +1,0 @@
-from .object cimport Object
-
-
-cdef class Annotation(Object):
-    pass

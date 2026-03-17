@@ -1,3 +1,0 @@
-from .object import Object
-
-class Axiom(Object): ...

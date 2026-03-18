@@ -1,4 +1,6 @@
-from ._ulib cimport UOStream, UString, ulib_ret_builtin
+from collections.abc import Iterable
+from ._object import Object
+from ._ulib cimport UOStream, UString, ulib_ret, ulib_ret_builtin
 
 
 cpdef enum Ret:
@@ -202,6 +204,7 @@ cdef extern from "cowl_vector.h":
 
     UVec_CowlObjectPtr uvec_CowlObjectPtr()
     void uvec_deinit_CowlObjectPtr(UVec_CowlObjectPtr *vec)
+    ulib_ret uvec_push_CowlObjectPtr(UVec_CowlObjectPtr *vec, CowlObject *item)
 
     ctypedef struct CowlVector:
         pass
@@ -218,6 +221,19 @@ cdef extern from "cowl_iterator.h":
         pass
 
     CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
+
+
+cdef extern from "cowl_nary_bool.h":
+
+    cpdef enum CowlNAryType:
+        COWL_NT_INTERSECT,
+        COWL_NT_UNION
+
+    ctypedef struct CowlNAryBool:
+        pass
+
+    CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
+    CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
 
 
 cdef extern from "cowl_object.h":
@@ -258,3 +274,5 @@ cdef extern from "cowl_ontology.h":
 
 cdef CowlString *cowl_string_from_py(str s)
 cdef str cowl_string_to_py(CowlString *s)
+
+cdef CowlVector *cowl_vector_from_py(items: Iterable[Object])

@@ -1,8 +1,13 @@
+# type: ignore
+
 from ._ptr cimport Ptr
 
 
 cdef class Object:
-    cdef Ptr ptr
+    cdef Ptr _ptr
 
-    cdef inline void *raw_ptr(self):
-        return self.ptr.raw
+    cdef inline void *ptr(self):
+        return self._ptr.raw
+
+    cdef inline void set_ptr(self, Ptr ptr):
+        self._ptr = ptr

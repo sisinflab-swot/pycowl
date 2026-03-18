@@ -1,4 +1,5 @@
-from ._entity import Entity
-from ._individual import Individual
+from ._iri import IRI
+from ._object import Object
 
-class NamedIndividual(Entity, Individual): ...
+class NamedIndividual(Object):
+    def __init__(self, iri: str | IRI) -> None: ...

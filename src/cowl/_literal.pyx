@@ -1,3 +1,5 @@
+# type: ignore
+
 from . cimport _factory as factory
 from ._c cimport (
     CowlDatatype,
@@ -25,21 +27,18 @@ cdef class Literal(Object):
         language: str | None = None,
     ) -> None:
         cdef CowlString *c_value = cowl_string_from_py(value)
-        cdef CowlDatatype *c_dt
-        c_dt = <CowlDatatype *>datatype.raw_ptr() if datatype else <CowlDatatype *>NULL
-        cdef CowlString *c_lang = cowl_string_from_py(language) if language else <CowlString *>NULL
-        super().__init__(Ptr.wrap(<void *>cowl_literal(c_dt, c_value, c_lang)))
-        cowl_release(<void *>c_value)
-        cowl_release(<void *>c_lang)
+        cdef CowlDatatype *c_dt = <CowlDatatype *>datatype.ptr() if datatype else NULL
+        cdef CowlString *c_lang = cowl_string_from_py(language) if language else NULL
+        super().__init__(Ptr.wrap(cowl_literal(c_dt, c_value, c_lang)))
+        cowl_release(c_value)
+        cowl_release(c_lang)
 
     def datatype(self) -> Datatype:
-        cdef void *ptr = <void *>cowl_literal_get_datatype(<CowlLiteral *>self.raw_ptr())
-        return <Datatype>factory.retain(ptr)
+        return factory.retain(cowl_literal_get_datatype(<CowlLiteral *>self.ptr()))
 
     def value(self) -> str:
-        cdef CowlString *c_str = cowl_literal_get_value(<CowlLiteral *>self.raw_ptr())
-        return cowl_string_to_py(c_str)
+        return cowl_string_to_py(cowl_literal_get_value(<CowlLiteral *>self.ptr()))
 
     def language(self) -> str | None:
-        cdef CowlString *c_str = cowl_literal_get_lang(<CowlLiteral *>self.raw_ptr())
+        cdef CowlString *c_str = cowl_literal_get_lang(<CowlLiteral *>self.ptr())
         return cowl_string_to_py(c_str) if c_str else None

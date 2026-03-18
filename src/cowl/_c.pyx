@@ -29,5 +29,5 @@ cdef str cowl_string_to_py(CowlString *s):
 cdef CowlVector *cowl_vector_from_py(items: Iterable[Object]):
     cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
     for item in items:
-        uvec_push_CowlObjectPtr(&vec, <CowlObject *>(<Object>item).raw_ptr())
+        uvec_push_CowlObjectPtr(&vec, <CowlObject *>(<Object>item).ptr())
     return cowl_vector(&vec)

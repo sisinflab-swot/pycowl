@@ -1,3 +1,5 @@
+# type: ignore
+
 from ._c cimport (
     CowlString,
     cowl_iri,
@@ -26,7 +28,7 @@ cdef class IRI(Object):
 
 cdef void *_iri_from_str(str s):
     cdef UString u_str = ustring_from_py(s)
-    cdef void *ret = <void *>cowl_iri_from_string(u_str)
+    cdef void *ret = cowl_iri_from_string(u_str)
     ustring_deinit(&u_str)
     return ret
 
@@ -34,7 +36,7 @@ cdef void *_iri_from_str(str s):
 cdef void *_iri_from_prefix_suffix(str prefix, str suffix):
     cdef CowlString *c_prefix = cowl_string_from_py(prefix)
     cdef CowlString *c_suffix = cowl_string_from_py(suffix)
-    cdef void *ret = <void *>cowl_iri(c_prefix, c_suffix)
-    cowl_release(<void *>c_prefix)
-    cowl_release(<void *>c_suffix)
+    cdef void *ret = cowl_iri(c_prefix, c_suffix)
+    cowl_release(c_prefix)
+    cowl_release(c_suffix)
     return ret

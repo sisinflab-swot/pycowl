@@ -1,3 +1,5 @@
+# type: ignore
+
 from . cimport _factory as factory
 
 from ._c cimport (
@@ -22,34 +24,34 @@ from ._ulib cimport UString, ustring_to_py
 cdef class Object:
 
     def __init__(self, ptr: Ptr) -> None:
-        self.ptr = ptr
+        self._ptr = ptr
 
     def __str__(self) -> str:
-        cdef UString str_rep = cowl_to_ustring(self.ptr.raw)
+        cdef UString str_rep = cowl_to_ustring(self.ptr())
         return ustring_to_py(&str_rep)
 
     def __repr__(self) -> str:
-        cdef UString str_rep = cowl_to_debug_ustring(self.ptr.raw)
+        cdef UString str_rep = cowl_to_debug_ustring(self.ptr())
         return ustring_to_py(&str_rep)
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Object):
             return False
-        return <bool>cowl_equals(self.ptr.raw, (<Object>other).ptr.raw)
+        return cowl_equals(self.ptr(), (<Object>other).ptr())
 
     def __hash__(self) -> int:
-        return cowl_hash(self.ptr.raw)
+        return cowl_hash(self.ptr())
 
     def iri(self) -> IRI:
-        cdef void *iri_ptr = <void *>cowl_get_iri(self.ptr.raw)
+        cdef void *iri_ptr = cowl_get_iri(self.ptr())
 
         if not iri_ptr:
             raise TypeError("Object does not have an IRI")
 
-        return <IRI>factory.retain(iri_ptr)
+        return factory.retain(iri_ptr)
 
     def namespace(self) -> str:
-        cdef CowlString *ns_ptr = cowl_get_ns(self.ptr.raw)
+        cdef CowlString *ns_ptr = cowl_get_ns(self.ptr())
 
         if not ns_ptr:
             raise TypeError("Object does not have a namespace")
@@ -57,7 +59,7 @@ cdef class Object:
         return cowl_string_to_py(ns_ptr)
 
     def remainder(self) -> str:
-        cdef CowlString *rem_ptr = cowl_get_rem(self.ptr.raw)
+        cdef CowlString *rem_ptr = cowl_get_rem(self.ptr())
 
         if not rem_ptr:
             raise TypeError("Object does not have a remainder")
@@ -65,4 +67,9 @@ cdef class Object:
         return cowl_string_to_py(rem_ptr)
 
     def annotations(self) -> Collection:
-        return <Collection>factory.retain(<void *>cowl_get_annot(self.ptr.raw))
+        cdef void *annot_ptr = cowl_get_annot(self.ptr())
+
+        if not annot_ptr:
+            raise TypeError("Object does not have annotations")
+
+        return factory.retain(annot_ptr)

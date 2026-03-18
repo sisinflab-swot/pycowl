@@ -22,8 +22,11 @@ cdef inline void populate_types():
     from ._iri import IRI
     from ._literal import Literal
     from ._named_individual import NamedIndividual
+    from ._object_intersection_of import ObjectIntersectionOf
+    from ._object_property import ObjectProperty
     from ._ontology import Ontology
     from ._owlclass import Class
+    from ._sub_class_of import SubClassOf
 
     set_type(CowlObjectType.COWL_OT_ANNOTATION, Annotation)
     set_type(CowlObjectType.COWL_OT_ANNOT_PROP, AnnotationProperty)
@@ -34,8 +37,11 @@ cdef inline void populate_types():
     set_type(CowlObjectType.COWL_OT_IRI, IRI)
     set_type(CowlObjectType.COWL_OT_LITERAL, Literal)
     set_type(CowlObjectType.COWL_OT_I_NAMED, NamedIndividual)
+    set_type(CowlObjectType.COWL_OT_CE_OBJ_INTERSECT, ObjectIntersectionOf)
+    set_type(CowlObjectType.COWL_OT_OPE_OBJ_PROP, ObjectProperty)
     set_type(CowlObjectType.COWL_OT_ONTOLOGY, Ontology)
     set_type(CowlObjectType.COWL_OT_CE_CLASS, Class)
+    set_type(CowlObjectType.COWL_OT_A_SUB_CLASS, SubClassOf)
 
 
 cdef concrete_type(void *ptr):
@@ -47,12 +53,12 @@ cdef concrete_type(void *ptr):
 cdef Object wrap(void *ptr):
     ctype = concrete_type(ptr)
     cdef Object obj = ctype.__new__(ctype)
-    obj.ptr = Ptr.wrap(ptr)
+    obj.set_ptr(Ptr.wrap(ptr))
     return obj
 
 
 cdef Object retain(void *ptr):
     ctype = concrete_type(ptr)
     cdef Object obj = ctype.__new__(ctype)
-    obj.ptr = Ptr.retain(ptr)
+    obj.set_ptr(Ptr.retain(ptr))
     return obj

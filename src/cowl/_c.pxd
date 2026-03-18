@@ -1,5 +1,5 @@
 from collections.abc import Iterable
-from ._object import Object
+from ._object cimport Object
 from ._ulib cimport UOStream, UString, ulib_ret, ulib_ret_builtin
 
 
@@ -10,6 +10,11 @@ cpdef enum Ret:
     ERR_MEM = ulib_ret_builtin.ULIB_ERR_MEM
     ERR_BOUNDS = ulib_ret_builtin.ULIB_ERR_BOUNDS
     ERR_IO = ulib_ret_builtin.ULIB_ERR_IO
+
+
+cdef extern from "cowl_ret.h":
+
+    ctypedef int cowl_ret
 
 
 cdef extern from "cowl_annotation.h":
@@ -40,11 +45,27 @@ cdef extern from "cowl_anon_ind.h":
     cdef CowlAnonInd *cowl_anon_ind(CowlString *id)
 
 
+cdef extern from "cowl_axiom.h":
+
+    ctypedef struct CowlAxiom:
+        pass
+
+
 cdef extern from "cowl_class.h":
     ctypedef struct CowlClass:
         pass
 
     cdef CowlClass *cowl_class(CowlIRI *iri)
+
+
+cdef extern from "cowl_cls_exp.h":
+
+    ctypedef struct CowlClsExp:
+        pass
+
+
+cdef extern from "cowl_config.h":
+    void cowl_init()
 
 
 cdef extern from "cowl_data_prop.h":
@@ -59,6 +80,25 @@ cdef extern from "cowl_datatype.h":
         pass
 
     cdef CowlDatatype *cowl_datatype(CowlIRI *iri)
+
+
+cdef extern from "cowl_iri.h":
+
+    cdef struct CowlIRI:
+        pass
+
+    CowlIRI *cowl_iri(CowlString *prefix, CowlString *suffix)
+    CowlIRI *cowl_iri_from_string(UString s)
+    CowlString *cowl_iri_get_ns(CowlIRI *iri)
+    CowlString *cowl_iri_get_rem(CowlIRI *iri)
+
+
+cdef extern from "cowl_iterator.h":
+
+    ctypedef struct CowlIterator:
+        pass
+
+    CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
 
 
 cdef extern from "cowl_literal.h":
@@ -78,6 +118,19 @@ cdef extern from "cowl_named_ind.h":
     cdef CowlNamedInd *cowl_named_ind(CowlIRI *iri)
 
 
+cdef extern from "cowl_nary_bool.h":
+
+    cpdef enum CowlNAryType:
+        COWL_NT_INTERSECT,
+        COWL_NT_UNION
+
+    ctypedef struct CowlNAryBool:
+        pass
+
+    CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
+    CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
+
+
 cdef extern from "cowl_obj_prop.h":
     ctypedef struct CowlObjProp:
         pass
@@ -85,13 +138,22 @@ cdef extern from "cowl_obj_prop.h":
     cdef CowlObjProp *cowl_obj_prop(CowlIRI *iri)
 
 
-cdef extern from "cowl_config.h":
-    void cowl_init()
+cdef extern from "cowl_object.h":
 
+    ctypedef struct CowlObject:
+        pass
 
-cdef extern from "cowl_ret.h":
-
-    ctypedef int cowl_ret
+    void* cowl_retain(void *object)
+    void cowl_release(void *object)
+    CowlObjectType cowl_get_type(void *object)
+    bint cowl_equals(void *lhs, void *rhs)
+    int cowl_hash(void *object)
+    UString cowl_to_ustring(void *object)
+    UString cowl_to_debug_ustring(void *object)
+    CowlIRI *cowl_get_iri(void *object)
+    CowlString *cowl_get_ns(void *object)
+    CowlString *cowl_get_rem(void *object)
+    CowlVector *cowl_get_annot(void *object)
 
 
 cdef extern from "cowl_object_type.h":
@@ -177,24 +239,38 @@ cdef extern from "cowl_object_type.h":
         COWL_OT_I_ANONYMOUS
 
 
+cdef extern from "cowl_ontology.h":
+
+    ctypedef struct CowlOntology:
+        pass
+
+    CowlOntology *cowl_ontology()
+    CowlOntology *cowl_ontology_at_path(UString path)
+    cowl_ret cowl_ontology_to_stream(CowlOntology *onto, UOStream *stream)
+    cowl_ret cowl_ontology_to_path(CowlOntology *onto, UString path)
+    cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
+    cowl_ret cowl_ontology_set_iri(CowlOntology *onto, CowlIRI *iri)
+    cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, void *axiom)
+    bint cowl_ontology_remove_axiom(CowlOntology *onto, void *axiom)
+
+
 cdef extern from "cowl_string.h":
 
-    cdef struct CowlString:
+    ctypedef struct CowlString:
         pass
 
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)
 
 
-cdef extern from "cowl_iri.h":
+cdef extern from "cowl_sub_cls_axiom.h":
 
-    cdef struct CowlIRI:
+    ctypedef struct CowlSubClsAxiom:
         pass
 
-    CowlIRI *cowl_iri(CowlString *prefix, CowlString *suffix)
-    CowlIRI *cowl_iri_from_string(UString s)
-    CowlString *cowl_iri_get_ns(CowlIRI *iri)
-    CowlString *cowl_iri_get_rem(CowlIRI *iri)
+    CowlSubClsAxiom *cowl_sub_cls_axiom(void *sub, void *super, CowlVector *annot)
+    CowlClsExp *cowl_sub_cls_axiom_get_sub(CowlSubClsAxiom *axiom)
+    CowlClsExp *cowl_sub_cls_axiom_get_super(CowlSubClsAxiom *axiom)
 
 
 cdef extern from "cowl_vector.h":
@@ -213,63 +289,6 @@ cdef extern from "cowl_vector.h":
     int cowl_vector_count(CowlVector *vec)
     void *cowl_vector_get_item(CowlVector *vec, int idx)
     bint cowl_vector_contains(CowlVector *vec, void *item)
-
-
-cdef extern from "cowl_iterator.h":
-
-    ctypedef struct CowlIterator:
-        pass
-
-    CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
-
-
-cdef extern from "cowl_nary_bool.h":
-
-    cpdef enum CowlNAryType:
-        COWL_NT_INTERSECT,
-        COWL_NT_UNION
-
-    ctypedef struct CowlNAryBool:
-        pass
-
-    CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
-    CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
-
-
-cdef extern from "cowl_object.h":
-
-    ctypedef struct CowlObject:
-        pass
-
-    void* cowl_retain(void *object)
-    void cowl_release(void *object)
-    CowlObjectType cowl_get_type(void *object)
-    bint cowl_equals(void *lhs, void *rhs)
-    int cowl_hash(void *object)
-    UString cowl_to_ustring(void *object)
-    UString cowl_to_debug_ustring(void *object)
-    CowlIRI *cowl_get_iri(void *object)
-    CowlString *cowl_get_ns(void *object)
-    CowlString *cowl_get_rem(void *object)
-    CowlVector *cowl_get_annot(void *object)
-
-
-cdef extern from "cowl_axiom.h":
-
-    ctypedef struct CowlAxiom:
-        pass
-
-
-cdef extern from "cowl_ontology.h":
-
-    ctypedef struct CowlOntology:
-        pass
-
-    CowlOntology *cowl_ontology()
-    CowlOntology *cowl_ontology_at_path(UString path)
-    cowl_ret cowl_ontology_to_stream(CowlOntology *onto, UOStream *stream)
-    cowl_ret cowl_ontology_to_path(CowlOntology *onto, UString path)
-    cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
 
 
 cdef CowlString *cowl_string_from_py(str s)

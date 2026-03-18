@@ -44,8 +44,8 @@ class BasicTest(unittest.TestCase):
         assert lit_a.language() == lit_b.language() == None
         assert lit_c.language() == lang
 
-    def test_ontology(self) -> None:
-        """Test ontology parsing, serialization, and querying."""
+    def test_parse_serialize(self) -> None:
+        """Test ontology parsing and serialization."""
         orig = cowl.Ontology.at_path(TEST_ONTO_PATH)
 
         with TemporaryDirectory() as tmp:
@@ -63,6 +63,22 @@ class BasicTest(unittest.TestCase):
         orig_annotations = set(orig.annotations())
         other_annotations = set(other.annotations())
         assert orig_annotations == other_annotations
+
+    def test_edit(self) -> None:
+        """Test ontology editing."""
+        ns = "http://example.org/test#"
+        onto = cowl.Ontology()
+        onto.set_iri(ns)
+
+        cls_a = cowl.Class(ns + "A")
+        cls_b = cowl.Class(ns + "B")
+        axiom = cowl.SubClassOf(cls_a, cls_b)
+
+        onto.add_axiom(axiom)
+        assert axiom in onto.axioms()
+
+        onto.remove_axiom(axiom)
+        assert axiom not in onto.axioms()
 
 
 if __name__ == "__main__":

@@ -18,9 +18,11 @@ class BasicTest(unittest.TestCase):
         iri_a = cowl.IRI(iri_str)
         iri_b = cowl.IRI(ns, rem)
 
+        assert iri_a == iri_b
+        assert str(iri_a) == str(iri_b)
         assert iri_a.namespace() == iri_b.namespace() == ns
         assert iri_a.remainder() == iri_b.remainder() == rem
-        assert str(iri_a) == str(iri_b) == iri_str
+        assert iri_a.as_string() == iri_b.as_string() == iri_str
 
     def test_literal(self) -> None:
         value = "Hello, world!"
@@ -32,6 +34,7 @@ class BasicTest(unittest.TestCase):
         lit_b = cowl.Literal(value, datatype=dt)
         lit_c = cowl.Literal(value, language=lang)
 
+        assert lit_a == lit_b
         assert lit_a.value() == lit_b.value() == lit_c.value() == value
         assert lit_a.datatype() == lit_b.datatype() == dt
         assert lit_c.datatype() == lang_dt
@@ -57,6 +60,10 @@ class BasicTest(unittest.TestCase):
         other_annotations = set(other.annotations())
         assert orig_annotations == other_annotations
 
+        orig_primitives = set(orig.primitives())
+        other_primitives = set(other.primitives())
+        assert orig_primitives == other_primitives
+
     def test_edit(self) -> None:
         ns = "http://example.org/test#"
         onto = cowl.Ontology()
@@ -64,13 +71,22 @@ class BasicTest(unittest.TestCase):
 
         cls_a = cowl.Class(ns + "A")
         cls_b = cowl.Class(ns + "B")
-        axiom = cowl.SubClassOf(cls_a, cls_b)
+        cls_c = cowl.Class(ns + "C")
+        prop = cowl.ObjectProperty(ns + "prop")
+        ind = cowl.NamedIndividual(ns + "a")
 
-        onto.add_axiom(axiom)
-        assert axiom in onto.axioms()
+        axioms: list[cowl.Axiom] = [
+            cowl.SubClassOf(cls_a, cowl.ObjectIntersectionOf(cls_b, cls_c)),
+            cowl.ClassAssertion(cowl.ObjectAllValuesFrom(prop, cls_c), ind),
+        ]
 
-        onto.remove_axiom(axiom)
-        assert axiom not in onto.axioms()
+        for axiom in axioms:
+            onto.add_axiom(axiom)
+            assert axiom in onto.axioms()
+
+        for axiom in axioms:
+            onto.remove_axiom(axiom)
+            assert axiom not in onto.axioms()
 
 
 if __name__ == "__main__":

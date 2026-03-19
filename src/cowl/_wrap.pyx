@@ -39,7 +39,7 @@ cdef CowlString *cowl_string_from_py(str s):
 
 
 cdef str cowl_string_to_py(CowlString *s):
-    return ustring_to_py(cowl_string_get_raw(s), deinit=False)
+    return ustring_to_py(<UString *>cowl_string_get_raw(s), deinit=False)
 
 
 cdef CowlVector *cowl_vector_from_py(items: Iterable[Object]):
@@ -58,20 +58,24 @@ _TYPES: list[Type[Object]] = []
 cdef inline void _populate_types():
     global _TYPES
     _TYPES = [Object] * CowlObjectType.COWL_OT_COUNT
-    _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
-    _TYPES[CowlObjectType.COWL_OT_ANNOT_PROP] = AnnotationProperty
-    _TYPES[CowlObjectType.COWL_OT_I_ANONYMOUS] = AnonymousIndividual
     _TYPES[CowlObjectType.COWL_OT_VECTOR] = Collection
-    _TYPES[CowlObjectType.COWL_OT_DPE_DATA_PROP] = DataProperty
-    _TYPES[CowlObjectType.COWL_OT_DR_DATATYPE] = Datatype
     _TYPES[CowlObjectType.COWL_OT_IRI] = IRI
     _TYPES[CowlObjectType.COWL_OT_LITERAL] = Literal
-    _TYPES[CowlObjectType.COWL_OT_I_NAMED] = NamedIndividual
-    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_INTERSECT] = ObjectIntersectionOf
-    _TYPES[CowlObjectType.COWL_OT_OPE_OBJ_PROP] = ObjectProperty
     _TYPES[CowlObjectType.COWL_OT_ONTOLOGY] = Ontology
-    _TYPES[CowlObjectType.COWL_OT_CE_CLASS] = Class
+    _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
+    _TYPES[CowlObjectType.COWL_OT_ANNOT_PROP] = AnnotationProperty
     _TYPES[CowlObjectType.COWL_OT_A_SUB_CLASS] = SubClassOf
+    _TYPES[CowlObjectType.COWL_OT_CE_CLASS] = Class
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_INTERSECT] = ObjectIntersectionOf
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_UNION] = ObjectUnionOf
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_SOME] = ObjectSomeValuesFrom
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_ALL] = ObjectAllValuesFrom
+    _TYPES[CowlObjectType.COWL_OT_DR_DATATYPE] = Datatype
+    _TYPES[CowlObjectType.COWL_OT_OPE_OBJ_PROP] = ObjectProperty
+    _TYPES[CowlObjectType.COWL_OT_OPE_INV_OBJ_PROP] = InverseObjectProperty
+    _TYPES[CowlObjectType.COWL_OT_DPE_DATA_PROP] = DataProperty
+    _TYPES[CowlObjectType.COWL_OT_I_NAMED] = NamedIndividual
+    _TYPES[CowlObjectType.COWL_OT_I_ANONYMOUS] = AnonymousIndividual
 
 
 cdef _concrete_type(void *ptr):
@@ -118,7 +122,7 @@ cdef class Object:
         return cowl_equals(self.ptr, (<Object>other).ptr)
 
     def __hash__(self) -> int:
-        return cowl_hash(self.ptr)
+        return hash(cowl_hash(self.ptr))
 
     def iri(self) -> IRI:
         cdef void *iri_ptr = cowl_get_iri(self.ptr)
@@ -151,6 +155,18 @@ cdef class Object:
             raise TypeError("Object does not have annotations")
 
         return Object.retain(annot_ptr)
+
+    def is_reserved(self) -> bool:
+        return cowl_is_reserved(self.ptr)
+
+    def has_primitive(self, primitive: Primitive) -> bool:
+        return cowl_has_primitive(self.ptr, (<Object>primitive).ptr)
+
+    def primitives(self) -> Collection:
+        cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
+        cdef CowlIterator iter = cowl_iterator_vec(&vec, False)
+        cowl_iterate_primitives(self.ptr, COWL_PF_ALL, &iter)
+        return Object.wrap(cowl_vector(&vec))
 
 
 cdef class AnnotationProperty(Object):
@@ -218,8 +234,9 @@ cdef class IRI(Object):
     def __init__(self, prefix: str, suffix: str | None = None) -> None:
         self.ptr = _iri_from_prefix_suffix(prefix, suffix) if suffix else _iri_from_str(prefix)
 
-    def __str__(self) -> str:
-        return self.namespace() + self.remainder()
+    def as_string(self) -> str:
+        cdef UString iri_str = cowl_iri_to_ustring(<CowlIRI *>self.ptr)
+        return ustring_to_py(&iri_str)
 
 
 cdef inline void *_iri_from_str(str s):
@@ -236,6 +253,14 @@ cdef inline void *_iri_from_prefix_suffix(str prefix, str suffix):
     cowl_release(c_prefix)
     cowl_release(c_suffix)
     return ret
+
+
+cdef class InverseObjectProperty(Object):
+    def __init__(self, prop: ObjectProperty) -> None:
+        self.ptr = cowl_inv_obj_prop(<CowlObjProp *>prop.ptr)
+
+    def property(self) -> ObjectProperty:
+        return Object.retain(cowl_inv_obj_prop_get_prop(<CowlInvObjProp *>self.ptr))
 
 
 cdef class Literal(Object):
@@ -279,14 +304,43 @@ cdef class ObjectProperty(Object):
 # Class expressions
 
 
-cdef class ObjectIntersectionOf(Object):
-
-    def __init__(self, operands: Iterable[Object]) -> None:
-        cdef CowlNAryType ctype = CowlNAryType.COWL_NT_INTERSECT
-        self.ptr = cowl_nary_bool(ctype, cowl_vector_from_py(operands))
-
+cdef class NAryBooleanClassExpression(Object):
     def operands(self) -> Collection:
         return Object.retain(cowl_nary_bool_get_operands(<CowlNAryBool *>self.ptr))
+
+
+cdef class ObjectIntersectionOf(NAryBooleanClassExpression):
+
+    def __init__(self, *args: Object) -> None:
+        cdef CowlNAryType ctype = CowlNAryType.COWL_NT_INTERSECT
+        self.ptr = cowl_nary_bool(ctype, cowl_vector_from_py(args))
+
+
+cdef class ObjectUnionOf(NAryBooleanClassExpression):
+
+    def __init__(self, *args: Object) -> None:
+        cdef CowlNAryType ctype = CowlNAryType.COWL_NT_UNION
+        self.ptr = cowl_nary_bool(ctype, cowl_vector_from_py(args))
+
+
+cdef class ObjectQuantifier(Object):
+    def property(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_obj_quant_get_prop(<CowlObjQuant *>self.ptr))
+
+    def filler(self) -> ClassExpression:
+        return Object.retain(cowl_obj_quant_get_filler(<CowlObjQuant *>self.ptr))
+
+
+cdef class ObjectAllValuesFrom(ObjectQuantifier):
+    def __init__(self, prop: ObjectPropertyExpression, filler: ClassExpression) -> None:
+        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_ALL
+        self.ptr = cowl_obj_quant(qtype, (<Object>prop).ptr, (<Object>filler).ptr)
+
+
+cdef class ObjectSomeValuesFrom(ObjectQuantifier):
+    def __init__(self, prop: ObjectPropertyExpression, filler: ClassExpression) -> None:
+        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_SOME
+        self.ptr = cowl_obj_quant(qtype, (<Object>prop).ptr, (<Object>filler).ptr)
 
 
 # Axioms
@@ -309,6 +363,24 @@ cdef class SubClassOf(Object):
 
     def super_class(self) -> Object:
         return Object.retain(cowl_sub_cls_axiom_get_super(<CowlSubClsAxiom *>self.ptr))
+
+
+cdef class ClassAssertion(Object):
+    def __init__(
+        self,
+        cls: Object,
+        ind: Object,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
+        self.ptr = cowl_cls_assert_axiom(cls.ptr, ind.ptr, annot)
+        cowl_release(annot)
+
+    def class_expression(self) -> ClassExpression:
+        return Object.retain(cowl_cls_assert_axiom_get_cls_exp(<CowlClsAssertAxiom *>self.ptr))
+
+    def individual(self) -> Individual:
+        return Object.retain(cowl_cls_assert_axiom_get_ind(<CowlClsAssertAxiom *>self.ptr))
 
 
 # Ontology

@@ -1,3 +1,7 @@
+# type: ignore
+
+from libc.stdint cimport uint8_t
+
 cdef extern from "ulib.h":
 
     ctypedef int ulib_ret
@@ -31,15 +35,40 @@ cdef extern from "ulib.h":
 cdef extern from "cowl.h":
 
     ctypedef int cowl_ret
+
+    ctypedef uint8_t CowlPrimitiveFlags
+    CowlPrimitiveFlags COWL_PF_NONE
+    CowlPrimitiveFlags COWL_PF_ALL
+    CowlPrimitiveFlags COWL_PF_CLASS
+    CowlPrimitiveFlags COWL_PF_DATATYPE
+    CowlPrimitiveFlags COWL_PF_OBJ_PROP
+    CowlPrimitiveFlags COWL_PF_DATA_PROP
+    CowlPrimitiveFlags COWL_PF_ANNOT_PROP
+    CowlPrimitiveFlags COWL_PF_NAMED_IND
+    CowlPrimitiveFlags COWL_PF_ANON_IND
+    CowlPrimitiveFlags COWL_PF_IRI
+    CowlPrimitiveFlags COWL_PF_ENTITY
+
+    ctypedef void CowlAny
+    ctypedef void CowlAnyAnnotValue
+    ctypedef void CowlAnyAxiom
+    ctypedef void CowlAnyClsExp
+    ctypedef void CowlAnyIndividual
+    ctypedef void CowlAnyObjPropExp
+    ctypedef void CowlAnyPrimitive
+
     ctypedef struct CowlAnnotation: pass
     ctypedef struct CowlAnnotProp: pass
     ctypedef struct CowlAnnotValue: pass
     ctypedef struct CowlAnonInd: pass
     ctypedef struct CowlAxiom: pass
     ctypedef struct CowlClass: pass
+    ctypedef struct CowlClsAssertAxiom: pass
     ctypedef struct CowlClsExp: pass
     ctypedef struct CowlDataProp: pass
     ctypedef struct CowlDatatype: pass
+    ctypedef struct CowlIndividual: pass
+    ctypedef struct CowlInvObjProp: pass
     ctypedef struct CowlIRI: pass
     ctypedef struct CowlIterator: pass
     ctypedef struct CowlLiteral: pass
@@ -47,6 +76,8 @@ cdef extern from "cowl.h":
     ctypedef struct CowlNAryBool: pass
     ctypedef struct CowlObject: pass
     ctypedef struct CowlObjProp: pass
+    ctypedef struct CowlObjPropExp: pass
+    ctypedef struct CowlObjQuant: pass
     ctypedef struct CowlOntology: pass
     ctypedef struct CowlString: pass
     ctypedef struct CowlSubClsAxiom: pass
@@ -135,34 +166,47 @@ cdef extern from "cowl.h":
         COWL_OT_COUNT
 
     cdef enum CowlNAryType:
-        COWL_NT_INTERSECT,
+        COWL_NT_INTERSECT
         COWL_NT_UNION
 
+    cdef enum CowlQuantType:
+        COWL_QT_SOME
+        COWL_QT_ALL
+
     void cowl_init()
-    void* cowl_retain(void *object)
-    void cowl_release(void *object)
-    CowlObjectType cowl_get_type(void *object)
-    bint cowl_equals(void *lhs, void *rhs)
-    int cowl_hash(void *object)
-    UString cowl_to_ustring(void *object)
-    UString cowl_to_debug_ustring(void *object)
-    CowlIRI *cowl_get_iri(void *object)
-    CowlString *cowl_get_ns(void *object)
-    CowlString *cowl_get_rem(void *object)
-    CowlVector *cowl_get_annot(void *object)
+    CowlAny* cowl_retain(CowlAny *object)
+    void cowl_release(CowlAny *object)
+    CowlObjectType cowl_get_type(CowlAny *object)
+    bint cowl_equals(CowlAny *lhs, CowlAny *rhs)
+    int cowl_hash(CowlAny *object)
+    UString cowl_to_ustring(CowlAny *object)
+    UString cowl_to_debug_ustring(CowlAny *object)
+    CowlIRI *cowl_get_iri(CowlAny *object)
+    CowlString *cowl_get_ns(CowlAny *object)
+    CowlString *cowl_get_rem(CowlAny *object)
+    CowlVector *cowl_get_annot(CowlAny *object)
+    bint cowl_is_reserved(CowlAny *object)
+    bint cowl_has_primitive(CowlAny *object, CowlAnyPrimitive *primitive)
+    cowl_ret cowl_iterate_primitives(CowlAny *object, CowlPrimitiveFlags flags, CowlIterator *iter)
     CowlAnnotProp *cowl_annot_prop(CowlIRI *iri)
-    CowlAnnotation *cowl_annotation(CowlAnnotProp *prop, void *value, CowlVector *annot)
+    CowlAnnotation *cowl_annotation(CowlAnnotProp *prop, CowlAnyAnnotValue *value, CowlVector *annot)
     CowlAnnotProp *cowl_annotation_get_prop(CowlAnnotation *annot)
     CowlAnnotValue *cowl_annotation_get_value(CowlAnnotation *annot)
     CowlVector *cowl_annotation_get_annot(CowlAnnotation *annot)
     CowlAnonInd *cowl_anon_ind(CowlString *id)
     CowlClass *cowl_class(CowlIRI *iri)
+    CowlClsAssertAxiom *cowl_cls_assert_axiom(CowlAnyClsExp *exp, CowlAnyIndividual *ind, CowlVector *annot)
+    CowlClsExp *cowl_cls_assert_axiom_get_cls_exp(CowlClsAssertAxiom *axiom)
+    CowlIndividual *cowl_cls_assert_axiom_get_ind(CowlClsAssertAxiom *axiom)
     CowlDataProp *cowl_data_prop(CowlIRI *iri)
     CowlDatatype *cowl_datatype(CowlIRI *iri)
+    CowlInvObjProp *cowl_inv_obj_prop(CowlObjProp *prop)
+    CowlObjProp *cowl_inv_obj_prop_get_prop(CowlInvObjProp *inv)
     CowlIRI *cowl_iri(CowlString *prefix, CowlString *suffix)
     CowlIRI *cowl_iri_from_string(UString s)
     CowlString *cowl_iri_get_ns(CowlIRI *iri)
     CowlString *cowl_iri_get_rem(CowlIRI *iri)
+    UString cowl_iri_to_ustring(CowlIRI *iri)
     CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
     CowlLiteral *cowl_literal(CowlDatatype *dt, CowlString *value, CowlString *lang)
     CowlDatatype *cowl_literal_get_datatype(CowlLiteral *literal)
@@ -172,23 +216,26 @@ cdef extern from "cowl.h":
     CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
     CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
     CowlObjProp *cowl_obj_prop(CowlIRI *iri)
+    CowlObjQuant *cowl_obj_quant(CowlQuantType type, CowlAnyObjPropExp *prop, CowlAnyClsExp *filler)
+    CowlObjPropExp *cowl_obj_quant_get_prop(CowlObjQuant *restr)
+    CowlClsExp *cowl_obj_quant_get_filler(CowlObjQuant *restr)
     CowlOntology *cowl_ontology()
     CowlOntology *cowl_ontology_at_path(UString path)
     cowl_ret cowl_ontology_to_stream(CowlOntology *onto, UOStream *stream)
     cowl_ret cowl_ontology_to_path(CowlOntology *onto, UString path)
     cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
     cowl_ret cowl_ontology_set_iri(CowlOntology *onto, CowlIRI *iri)
-    cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, void *axiom)
-    bint cowl_ontology_remove_axiom(CowlOntology *onto, void *axiom)
+    cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
+    bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)
-    CowlSubClsAxiom *cowl_sub_cls_axiom(void *sub, void *super, CowlVector *annot)
+    CowlSubClsAxiom *cowl_sub_cls_axiom(CowlAnyClsExp *sub, CowlAnyClsExp *super, CowlVector *annot)
     CowlClsExp *cowl_sub_cls_axiom_get_sub(CowlSubClsAxiom *axiom)
     CowlClsExp *cowl_sub_cls_axiom_get_super(CowlSubClsAxiom *axiom)
     CowlVector *cowl_vector(UVec_CowlObjectPtr *data)
     int cowl_vector_count(CowlVector *vec)
-    void *cowl_vector_get_item(CowlVector *vec, int idx)
-    bint cowl_vector_contains(CowlVector *vec, void *item)
+    CowlAny *cowl_vector_get_item(CowlVector *vec, int idx)
+    bint cowl_vector_contains(CowlVector *vec, CowlAny *item)
     UVec_CowlObjectPtr uvec_CowlObjectPtr()
     void uvec_deinit_CowlObjectPtr(UVec_CowlObjectPtr *vec)
     ulib_ret uvec_push_CowlObjectPtr(UVec_CowlObjectPtr *vec, CowlObject *item)

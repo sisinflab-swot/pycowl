@@ -1,5 +1,3 @@
-"""Tests for the base functionality of the library."""
-
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,10 +10,7 @@ TEST_ONTO_PATH = RES_DIR / "test_onto.owl"
 
 
 class BasicTest(unittest.TestCase):
-    """Basic data model tests."""
-
     def test_iri(self) -> None:
-        """IRI tests."""
         ns = "http://example.org/test#"
         rem = "MyClass"
         iri_str = ns + rem
@@ -28,7 +23,6 @@ class BasicTest(unittest.TestCase):
         assert str(iri_a) == str(iri_b) == iri_str
 
     def test_literal(self) -> None:
-        """Literal tests."""
         value = "Hello, world!"
         lang = "en"
         dt = cowl.Datatype("http://www.w3.org/2001/XMLSchema#string")
@@ -41,11 +35,10 @@ class BasicTest(unittest.TestCase):
         assert lit_a.value() == lit_b.value() == lit_c.value() == value
         assert lit_a.datatype() == lit_b.datatype() == dt
         assert lit_c.datatype() == lang_dt
-        assert lit_a.language() == lit_b.language() == None
+        assert lit_a.language() is lit_b.language() is None
         assert lit_c.language() == lang
 
     def test_parse_serialize(self) -> None:
-        """Test ontology parsing and serialization."""
         orig = cowl.Ontology.at_path(TEST_ONTO_PATH)
 
         with TemporaryDirectory() as tmp:
@@ -65,7 +58,6 @@ class BasicTest(unittest.TestCase):
         assert orig_annotations == other_annotations
 
     def test_edit(self) -> None:
-        """Test ontology editing."""
         ns = "http://example.org/test#"
         onto = cowl.Ontology()
         onto.set_iri(ns)

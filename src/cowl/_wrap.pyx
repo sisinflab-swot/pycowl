@@ -62,6 +62,7 @@ cdef inline void _populate_types():
     _TYPES[CowlObjectType.COWL_OT_IRI] = IRI
     _TYPES[CowlObjectType.COWL_OT_LITERAL] = Literal
     _TYPES[CowlObjectType.COWL_OT_ONTOLOGY] = Ontology
+    _TYPES[CowlObjectType.COWL_OT_PREFIX_MAP] = PrefixMap
     _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
     _TYPES[CowlObjectType.COWL_OT_ANNOT_PROP] = AnnotationProperty
     _TYPES[CowlObjectType.COWL_OT_A_SUB_CLASS] = SubClassOf
@@ -387,6 +388,7 @@ cdef class ClassAssertion(Object):
 
 
 cdef class Ontology(Object):
+    cdef PrefixMap _pm
 
     @classmethod
     def at_path(cls, path: Path | str) -> Ontology:
@@ -398,6 +400,12 @@ cdef class Ontology(Object):
             raise ValueError(msg)
 
         return Object.wrap(ptr)
+
+    @property
+    def prefix_map(self) -> PrefixMap:
+        if self._pm is None:
+            self._pm = Object.retain(cowl_ontology_get_prefix_map(<CowlOntology *>self.ptr))
+        return self._pm
 
     def __init__(self) -> None:
         self.ptr = cowl_ontology()
@@ -415,9 +423,18 @@ cdef class Ontology(Object):
         cowl_ontology_to_path(<CowlOntology *>self.ptr, path_str)
         ustring_deinit(&path_str)
 
-    def set_iri(self, iri: str | IRI) -> None:
+    def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         cowl_ontology_set_iri(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
+        if update_prefix:
+            iri_str = iri_obj.as_string()
+            if not (iri_str.endswith("#") or iri_str.endswith("/")):
+                iri_str += "#"
+            self.prefix_map[""] = iri_str
+
+    def set_version(self, version: str | IRI) -> None:
+        cdef IRI iri_obj = version if isinstance(version, IRI) else IRI(version)
+        cowl_ontology_set_version(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
 
     def axioms(self) -> Collection:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
@@ -425,8 +442,96 @@ cdef class Ontology(Object):
         cowl_ontology_iterate_axioms(<CowlOntology *>self.ptr, &iter)
         return Object.wrap(cowl_vector(&vec))
 
-    def add_axiom(self, axiom: Object) -> None:
-        cowl_ontology_add_axiom(<CowlOntology *>self.ptr, axiom.ptr)
+    def add(self, axiom: Object) -> None:
+        if isinstance(axiom, Annotation):
+            cowl_ontology_add_annot(<CowlOntology *>self.ptr, <CowlAnnotation *>axiom.ptr)
+        elif isinstance(axiom, IRI):
+            cowl_ontology_add_import(<CowlOntology *>self.ptr, <CowlIRI *>axiom.ptr)
+        else:
+            cowl_ontology_add_axiom(<CowlOntology *>self.ptr, axiom.ptr)
 
-    def remove_axiom(self, axiom: Object) -> None:
-        cowl_ontology_remove_axiom(<CowlOntology *>self.ptr, axiom.ptr)
+    def remove(self, axiom: Object) -> None:
+        if isinstance(axiom, Annotation):
+            cowl_ontology_remove_annot(<CowlOntology *>self.ptr, <CowlAnnotation *>axiom.ptr)
+        elif isinstance(axiom, IRI):
+            cowl_ontology_remove_import(<CowlOntology *>self.ptr, <CowlIRI *>axiom.ptr)
+        else:
+            cowl_ontology_remove_axiom(<CowlOntology *>self.ptr, axiom.ptr)
+
+
+cdef class PrefixMap(Object):
+    @staticmethod
+    def default() -> PrefixMap:
+        return Object.retain(cowl_get_prefix_map())
+
+    def __init__(self) -> None:
+        self.ptr = cowl_prefix_map()
+
+    def __contains__(self, prefix_or_ns: str) -> bool:
+        return self.get(prefix_or_ns) is not None
+
+    def __setitem__(self, prefix: str, ns: str) -> None:
+        cdef CowlString *c_prefix = cowl_string_from_py(prefix)
+        cdef CowlString *c_ns = cowl_string_from_py(ns)
+        cowl_prefix_map_add(<CowlPrefixMap *>self.ptr, c_prefix, c_ns, True)
+        cowl_release(c_prefix)
+        cowl_release(c_ns)
+
+    def __getitem__(self, prefix_or_ns: str) -> str:
+        cdef CowlString *c_str = cowl_string_from_py(prefix_or_ns)
+        cdef CowlString *result = cowl_prefix_map_get_ns(<CowlPrefixMap *>self.ptr, c_str)
+        if not result:
+            result = cowl_prefix_map_get_prefix(<CowlPrefixMap *>self.ptr, c_str)
+        cowl_release(c_str)
+        if not result:
+            raise KeyError(prefix_or_ns)
+        return cowl_string_to_py(result)
+
+    def __delitem__(self, prefix_or_ns: str) -> None:
+        cdef CowlString *c_str = cowl_string_from_py(prefix_or_ns)
+        cdef cowl_ret ret = cowl_prefix_map_remove_prefix(<CowlPrefixMap *>self.ptr, c_str)
+        if ret == Ret.NO:
+            ret = cowl_prefix_map_remove_ns(<CowlPrefixMap *>self.ptr, c_str)
+        cowl_release(c_str)
+        if ret == Ret.NO:
+            raise KeyError(prefix_or_ns)
+
+    def __len__(self) -> int:
+        return cowl_table_count(cowl_prefix_map_get_table(<CowlPrefixMap *>self.ptr, False))
+
+    def __iter__(self) -> Iterator[str]:
+        yield from self.prefixes()
+
+    def items(self) -> Iterator[tuple[str, str]]:
+        cdef CowlTable *table = cowl_prefix_map_get_table(<CowlPrefixMap *>self.ptr, False)
+        cdef const UHash_CowlObjectPtr *h = cowl_table_get_data(table)
+        cdef int size = uhash_size_CowlObjectPtr(h)
+        cdef int idx = uhash_next_CowlObjectPtr(h, 0)
+        while idx < size:
+            key = cowl_string_to_py(<CowlString *>uhash_key_CowlObjectPtr(h, idx))
+            value = cowl_string_to_py(<CowlString *>uhmap_val_CowlObjectPtr(h, idx))
+            yield (key, value)
+            idx = uhash_next_CowlObjectPtr(h, idx + 1)
+
+    def prefixes(self) -> Iterator[str]:
+        for prefix, _ in self.items():
+            yield prefix
+
+    def namespaces(self) -> Iterator[str]:
+        for _, ns in self.items():
+            yield ns
+
+    def add(self, prefix: str, ns: str) -> None:
+        self[prefix] = ns
+
+    def remove(self, prefix_or_ns: str) -> None:
+        try:
+            del self[prefix_or_ns]
+        except KeyError:
+            pass
+
+    def get(self, prefix_or_ns: str) -> str | None:
+        try:
+            return self[prefix_or_ns]
+        except KeyError:
+            return None

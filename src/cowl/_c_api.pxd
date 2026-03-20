@@ -79,9 +79,12 @@ cdef extern from "cowl.h":
     ctypedef struct CowlObjPropExp: pass
     ctypedef struct CowlObjQuant: pass
     ctypedef struct CowlOntology: pass
+    ctypedef struct CowlPrefixMap: pass
     ctypedef struct CowlString: pass
     ctypedef struct CowlSubClsAxiom: pass
+    ctypedef struct CowlTable: pass
     ctypedef struct CowlVector: pass
+    ctypedef struct UHash_CowlObjectPtr: pass
     ctypedef struct UVec_CowlObjectPtr: pass
 
     cdef enum CowlObjectType:
@@ -174,6 +177,7 @@ cdef extern from "cowl.h":
         COWL_QT_ALL
 
     void cowl_init()
+    CowlPrefixMap *cowl_get_prefix_map()
     CowlAny* cowl_retain(CowlAny *object)
     void cowl_release(CowlAny *object)
     CowlObjectType cowl_get_type(CowlAny *object)
@@ -220,22 +224,51 @@ cdef extern from "cowl.h":
     CowlObjPropExp *cowl_obj_quant_get_prop(CowlObjQuant *restr)
     CowlClsExp *cowl_obj_quant_get_filler(CowlObjQuant *restr)
     CowlOntology *cowl_ontology()
+    cowl_ret cowl_ontology_add_annot(CowlOntology *onto, CowlAnnotation *annot)
+    cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
+    cowl_ret cowl_ontology_add_import(CowlOntology *onto, CowlIRI *iri)
     CowlOntology *cowl_ontology_at_path(UString path)
+    CowlPrefixMap *cowl_ontology_get_prefix_map(CowlOntology *onto)
+    CowlIRI *cowl_ontology_get_version(CowlOntology *onto)
+    cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
+    bint cowl_ontology_remove_annot(CowlOntology *onto, CowlAnnotation *annot)
+    bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
+    bint cowl_ontology_remove_import(CowlOntology *onto, CowlIRI *iri)
+    cowl_ret cowl_ontology_set_iri(CowlOntology *onto, CowlIRI *iri)
+    cowl_ret cowl_ontology_set_version(CowlOntology *onto, CowlIRI *iri)
     cowl_ret cowl_ontology_to_stream(CowlOntology *onto, UOStream *stream)
     cowl_ret cowl_ontology_to_path(CowlOntology *onto, UString path)
-    cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
-    cowl_ret cowl_ontology_set_iri(CowlOntology *onto, CowlIRI *iri)
-    cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
-    bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
+    CowlPrefixMap *cowl_prefix_map()
+    CowlString *cowl_prefix_map_get_ns(CowlPrefixMap *map, CowlString *prefix)
+    CowlString *cowl_prefix_map_get_prefix(CowlPrefixMap *map, CowlString *ns)
+    CowlTable *cowl_prefix_map_get_table(CowlPrefixMap *map, bint reverse)
+    cowl_ret cowl_prefix_map_add(CowlPrefixMap *map, CowlString *prefix, CowlString *ns, bint overwrite)
+    cowl_ret cowl_prefix_map_remove_prefix(CowlPrefixMap *map, CowlString *prefix)
+    cowl_ret cowl_prefix_map_remove_ns(CowlPrefixMap *map, CowlString *ns)
+    cowl_ret cowl_prefix_map_merge(CowlPrefixMap *dst, CowlPrefixMap *src, bint overwrite)
+    CowlIRI *cowl_prefix_map_get_iri(CowlPrefixMap *map, UString prefix, UString rem)
+    CowlIRI *cowl_prefix_map_parse_short_iri(CowlPrefixMap *map, UString short_iri)
+    CowlIRI *cowl_prefix_map_parse_iri(CowlPrefixMap *map, UString str)
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)
     CowlSubClsAxiom *cowl_sub_cls_axiom(CowlAnyClsExp *sub, CowlAnyClsExp *super, CowlVector *annot)
     CowlClsExp *cowl_sub_cls_axiom_get_sub(CowlSubClsAxiom *axiom)
     CowlClsExp *cowl_sub_cls_axiom_get_super(CowlSubClsAxiom *axiom)
+    const UHash_CowlObjectPtr *cowl_table_get_data(CowlTable *table)
+    int cowl_table_count(CowlTable *table)
+    CowlAny *cowl_table_get_value(CowlTable *table, CowlAny *key)
+    CowlAny *cowl_table_get_any(CowlTable *table)
+    bint cowl_table_contains(CowlTable *table, CowlAny *key)
     CowlVector *cowl_vector(UVec_CowlObjectPtr *data)
+    const UVec_CowlObjectPtr *cowl_vector_get_data(CowlVector *vec)
     int cowl_vector_count(CowlVector *vec)
     CowlAny *cowl_vector_get_item(CowlVector *vec, int idx)
     bint cowl_vector_contains(CowlVector *vec, CowlAny *item)
+    int uhash_count_CowlObjectPtr(const UHash_CowlObjectPtr *h)
+    CowlAny *uhash_key_CowlObjectPtr(const UHash_CowlObjectPtr *h, int idx)
+    int uhash_size_CowlObjectPtr(const UHash_CowlObjectPtr *h)
+    int uhash_next_CowlObjectPtr(const UHash_CowlObjectPtr *h, int idx)
+    CowlAny *uhmap_val_CowlObjectPtr(const UHash_CowlObjectPtr *h, int idx)
     UVec_CowlObjectPtr uvec_CowlObjectPtr()
     void uvec_deinit_CowlObjectPtr(UVec_CowlObjectPtr *vec)
     ulib_ret uvec_push_CowlObjectPtr(UVec_CowlObjectPtr *vec, CowlObject *item)

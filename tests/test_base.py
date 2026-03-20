@@ -65,9 +65,11 @@ class BasicTest(unittest.TestCase):
         assert orig_primitives == other_primitives
 
     def test_edit(self) -> None:
-        ns = "http://example.org/test#"
+        iri = "http://example.org/test"
+        ns = iri + "#"
+
         onto = cowl.Ontology()
-        onto.set_iri(ns)
+        onto.set_iri(iri, update_prefix=True)
 
         cls_a = cowl.Class(ns + "A")
         cls_b = cowl.Class(ns + "B")
@@ -81,11 +83,11 @@ class BasicTest(unittest.TestCase):
         ]
 
         for axiom in axioms:
-            onto.add_axiom(axiom)
+            onto.add(axiom)
             assert axiom in onto.axioms()
 
         for axiom in axioms:
-            onto.remove_axiom(axiom)
+            onto.remove(axiom)
             assert axiom not in onto.axioms()
 
 

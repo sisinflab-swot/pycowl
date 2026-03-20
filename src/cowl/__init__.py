@@ -2,12 +2,8 @@
 
 from ._types import (
     AnnotationValue,
-    Axiom,
-    ClassExpression,
-    DataPropertyExpression,
     Entity,
     Individual,
-    ObjectPropertyExpression,
     Primitive,
 )
 from ._wrap import (
@@ -15,8 +11,10 @@ from ._wrap import (
     Annotation,
     AnnotationProperty,
     AnonymousIndividual,
+    Axiom,
     Class,
     ClassAssertion,
+    ClassExpression,
     Collection,
     DataProperty,
     Datatype,
@@ -27,6 +25,7 @@ from ._wrap import (
     ObjectAllValuesFrom,
     ObjectIntersectionOf,
     ObjectProperty,
+    ObjectPropertyExpression,
     ObjectSomeValuesFrom,
     ObjectUnionOf,
     Ontology,
@@ -45,7 +44,6 @@ __all__ = [
     "ClassExpression",
     "Collection",
     "DataProperty",
-    "DataPropertyExpression",
     "Datatype",
     "Entity",
     "Individual",

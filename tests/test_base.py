@@ -71,23 +71,28 @@ class BasicTest(unittest.TestCase):
         onto = cowl.Ontology()
         onto.set_iri(iri, update_prefix=True)
 
-        cls_a = cowl.Class(ns + "A")
-        cls_b = cowl.Class(ns + "B")
-        cls_c = cowl.Class(ns + "C")
+        a = cowl.Class(ns + "A")
+        b = cowl.Class(ns + "B")
+        c = cowl.Class(ns + "C")
+        d = cowl.Class(ns + "D")
         prop = cowl.ObjectProperty(ns + "prop")
-        ind = cowl.NamedIndividual(ns + "a")
+        ind = cowl.NamedIndividual(ns + "ind")
 
-        axioms: list[cowl.Axiom] = [
-            cowl.SubClassOf(cls_a, cowl.ObjectIntersectionOf(cls_b, cls_c)),
-            cowl.ClassAssertion(cowl.ObjectAllValuesFrom(prop, cls_c), ind),
-        ]
+        axioms: tuple[cowl.Axiom, ...] = (
+            a.is_a(b | (c & d)),
+            ind.is_a(prop.all(c) & prop.some(c)),
+        )
+
+        onto.add(*axioms)
 
         for axiom in axioms:
-            onto.add(axiom)
+            assert axiom in onto
             assert axiom in onto.axioms()
 
+        onto.remove(*axioms)
+
         for axiom in axioms:
-            onto.remove(axiom)
+            assert axiom not in onto
             assert axiom not in onto.axioms()
 
 

@@ -75,12 +75,16 @@ class BasicTest(unittest.TestCase):
         b = cowl.Class(ns + "B")
         c = cowl.Class(ns + "C")
         d = cowl.Class(ns + "D")
-        prop = cowl.ObjectProperty(ns + "prop")
-        ind = cowl.NamedIndividual(ns + "ind")
+        obj_prop = cowl.ObjectProperty(ns + "objProp")
+        data_prop = cowl.DataProperty(ns + "dataProp")
+        ind_a = cowl.NamedIndividual(ns + "ind_a")
+        ind_b = cowl.NamedIndividual(ns + "ind_b")
 
         axioms: tuple[cowl.Axiom, ...] = (
-            a.is_a(b | (c & d)),
-            ind.is_a(prop.all(c) & prop.some(c)),
+            a.is_a(b.that(c | ~d)),
+            ind_a.is_a(obj_prop.max(5) & obj_prop.all(c) & obj_prop.some(c)),
+            ~obj_prop(ind_a, ind_b),
+            data_prop(ind_a, cowl.Literal("10")),
         )
 
         onto.add(*axioms)

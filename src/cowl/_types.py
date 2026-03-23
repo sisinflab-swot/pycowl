@@ -15,4 +15,3 @@ type Entity = (
     Class | Datatype | ObjectProperty | DataProperty | AnnotationProperty | NamedIndividual
 )
 type Primitive = Entity | AnonymousIndividual
-type Individual = NamedIndividual | AnonymousIndividual

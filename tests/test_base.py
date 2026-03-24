@@ -82,9 +82,14 @@ class BasicTest(unittest.TestCase):
 
         axioms: tuple[cowl.Axiom, ...] = (
             a.is_a(b.that(c | ~d)),
+            c.disjoint_with(d),
             ind_a.is_a(obj_prop.max(5) & obj_prop.all(c) & obj_prop.some(c)),
+            ind_b.is_a(data_prop.exactly(1, cowl.XSD.INTEGER) & data_prop.some(cowl.XSD.STRING)),
             ~obj_prop(ind_a, ind_b),
             data_prop(ind_a, 10),
+            obj_prop.domain(a),
+            obj_prop.range(obj_prop.all(c)),
+            data_prop.range(cowl.one_of(10, 20, 30)),
         )
 
         onto.add(*axioms)

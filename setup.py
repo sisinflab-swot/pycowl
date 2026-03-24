@@ -14,7 +14,9 @@ from setuptools import Extension, setup
 # User config
 
 BUILD_TYPE = os.environ.get("COWL_BUILD_TYPE", "Release")
-ENTITY_IDS = os.environ.get("COWL_ENTITY_IDS", "OFF")
+LIBRARY_TYPE = os.environ.get("COWL_LIBRARY_TYPE", "STATIC").upper()
+LTO = os.environ.get("COWL_LTO", "OFF").upper()
+ENTITY_IDS = os.environ.get("COWL_ENTITY_IDS", "OFF").upper()
 
 # Paths
 
@@ -42,7 +44,7 @@ else:
 
 
 SHARED_LIB_GLOBS = ("*.so", "*.dylib", "*.dll")
-IMPORT_LIB_GLOBS = ("*.so", "*.dylib", "*.lib")
+IMPORT_LIB_GLOBS = ("*.a", "*.so", "*.dylib", "*.lib")
 
 NATIVE_DEFINES = [
     ("COWL_BUILDING", "1"),
@@ -94,11 +96,12 @@ def configure() -> None:
         "-B",
         str(NATIVE_BUILD_DIR),
         f"-DCMAKE_BUILD_TYPE={BUILD_TYPE}",
-        "-DCOWL_LTO=OFF",
-        "-DCOWL_LIBRARY_TYPE=SHARED",
+        "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
+        f"-DCOWL_LIBRARY_TYPE={LIBRARY_TYPE}",
         f"-DCOWL_ENTITY_IDS={ENTITY_IDS}",
-        "-DULIB_LIBRARY_TYPE=SHARED",
-        "-DULIB_LTO=OFF",
+        f"-DCOWL_LTO={LTO}",
+        f"-DULIB_LIBRARY_TYPE={LIBRARY_TYPE}",
+        f"-DULIB_LTO={LTO}",
         str(NATIVE_LIB_DIR),
     )
 

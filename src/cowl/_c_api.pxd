@@ -54,6 +54,7 @@ cdef extern from "cowl.h":
     ctypedef void CowlAnyAxiom
     ctypedef void CowlAnyClsExp
     ctypedef void CowlAnyDataPropExp
+    ctypedef void CowlAnyDataRange
     ctypedef void CowlAnyEntity
     ctypedef void CowlAnyIndividual
     ctypedef void CowlAnyObjPropExp
@@ -67,8 +68,16 @@ cdef extern from "cowl.h":
     ctypedef struct CowlClass: pass
     ctypedef struct CowlClsAssertAxiom: pass
     ctypedef struct CowlClsExp: pass
+    ctypedef struct CowlDataCard: pass
+    ctypedef struct CowlDataCompl: pass
+    ctypedef struct CowlDataOneOf: pass
     ctypedef struct CowlDataProp: pass
     ctypedef struct CowlDataPropAssertAxiom: pass
+    ctypedef struct CowlDataPropDomainAxiom: pass
+    ctypedef struct CowlDataPropExp: pass
+    ctypedef struct CowlDataPropRangeAxiom: pass
+    ctypedef struct CowlDataQuant: pass
+    ctypedef struct CowlDataRange: pass
     ctypedef struct CowlDatatype: pass
     ctypedef struct CowlDeclAxiom: pass
     ctypedef struct CowlEntity: pass
@@ -79,12 +88,17 @@ cdef extern from "cowl.h":
     ctypedef struct CowlLiteral: pass
     ctypedef struct CowlNamedInd: pass
     ctypedef struct CowlNAryBool: pass
-    ctypedef struct CowlObject: pass
+    ctypedef struct CowlNAryClsAxiom: pass
+    ctypedef struct CowlNAryData: pass
     ctypedef struct CowlObjCard: pass
     ctypedef struct CowlObjCompl: pass
+    ctypedef struct CowlObject: pass
+    ctypedef struct CowlObjOneOf: pass
     ctypedef struct CowlObjProp: pass
     ctypedef struct CowlObjPropAssertAxiom: pass
+    ctypedef struct CowlObjPropDomainAxiom: pass
     ctypedef struct CowlObjPropExp: pass
+    ctypedef struct CowlObjPropRangeAxiom: pass
     ctypedef struct CowlObjQuant: pass
     ctypedef struct CowlOntology: pass
     ctypedef struct CowlPrefixMap: pass
@@ -181,6 +195,12 @@ cdef extern from "cowl.h":
         COWL_CT_MAX
         COWL_CT_EXACT
 
+    cdef enum CowlNAryAxiomType:
+        COWL_NAT_EQUIV
+        COWL_NAT_DISJ
+        COWL_NAT_SAME
+        COWL_NAT_DIFF
+
     cdef enum CowlNAryType:
         COWL_NT_INTERSECT
         COWL_NT_UNION
@@ -217,14 +237,34 @@ cdef extern from "cowl.h":
     CowlClsAssertAxiom *cowl_cls_assert_axiom(CowlAnyClsExp *exp, CowlAnyIndividual *ind, CowlVector *annot)
     CowlClsExp *cowl_cls_assert_axiom_get_cls_exp(CowlClsAssertAxiom *axiom)
     CowlIndividual *cowl_cls_assert_axiom_get_ind(CowlClsAssertAxiom *axiom)
+    CowlDataCard *cowl_data_card(CowlCardType type, CowlAnyDataPropExp *prop,
+        CowlAnyDataRange *range, int cardinality)
+    CowlDataPropExp *cowl_data_card_get_prop(CowlDataCard *restr)
+    CowlDataRange *cowl_data_card_get_range(CowlDataCard *restr)
+    int cowl_data_card_get_cardinality(CowlDataCard *restr)
+    CowlDataCompl *cowl_data_compl(CowlAnyDataRange *operand)
+    CowlDataRange *cowl_data_compl_get_operand(CowlDataCompl *range)
+    CowlDataOneOf *cowl_data_one_of(CowlVector *values)
+    CowlVector *cowl_data_one_of_get_values(CowlDataOneOf *range)
+    CowlDataQuant *cowl_data_quant(CowlQuantType type, CowlAnyDataPropExp *prop, CowlAnyDataRange *range)
+    CowlDataPropExp *cowl_data_quant_get_prop(CowlDataQuant *restr)
+    CowlDataRange *cowl_data_quant_get_range(CowlDataQuant *restr)
     CowlDataProp *cowl_data_prop(CowlIRI *iri)
     CowlDataPropAssertAxiom *cowl_data_prop_assert_axiom(CowlAnyDataPropExp *prop,
         CowlAnyIndividual *subj, CowlLiteral *obj, CowlVector *annot)
     CowlDataPropAssertAxiom *cowl_neg_data_prop_assert_axiom(CowlAnyDataPropExp *prop,
         CowlAnyIndividual *subj, CowlLiteral *obj, CowlVector *annot)
-    CowlDataProp *cowl_data_prop_assert_axiom_get_prop(CowlDataPropAssertAxiom *axiom)
+    CowlDataPropExp *cowl_data_prop_assert_axiom_get_prop(CowlDataPropAssertAxiom *axiom)
     CowlIndividual *cowl_data_prop_assert_axiom_get_subject(CowlDataPropAssertAxiom *axiom)
     CowlLiteral *cowl_data_prop_assert_axiom_get_object(CowlDataPropAssertAxiom *axiom)
+    CowlDataPropDomainAxiom *cowl_data_prop_domain_axiom(CowlAnyDataPropExp *prop,
+        CowlAnyClsExp *domain, CowlVector *annot)
+    CowlDataPropExp *cowl_data_prop_domain_axiom_get_prop(CowlDataPropDomainAxiom *axiom)
+    CowlClsExp *cowl_data_prop_domain_axiom_get_domain(CowlDataPropDomainAxiom *axiom)
+    CowlDataPropRangeAxiom *cowl_data_prop_range_axiom(CowlAnyDataPropExp *prop,
+        CowlAnyDataRange *range, CowlVector *annot)
+    CowlDataPropExp *cowl_data_prop_range_axiom_get_prop(CowlDataPropRangeAxiom *axiom)
+    CowlDataRange *cowl_data_prop_range_axiom_get_range(CowlDataPropRangeAxiom *axiom)
     CowlDatatype *cowl_datatype(CowlIRI *iri)
     CowlDeclAxiom *cowl_decl_axiom(CowlAnyEntity *entity, CowlVector *annot)
     CowlEntity *cowl_decl_axiom_get_entity(CowlDeclAxiom *axiom)
@@ -243,6 +283,10 @@ cdef extern from "cowl.h":
     CowlNamedInd *cowl_named_ind(CowlIRI *iri)
     CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
     CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
+    CowlNAryClsAxiom *cowl_nary_cls_axiom(CowlNAryAxiomType type, CowlVector *classes, CowlVector *annot)
+    CowlVector *cowl_nary_cls_axiom_get_classes(CowlNAryClsAxiom *axiom)
+    CowlNAryData *cowl_nary_data(CowlNAryType type, CowlVector *operands)
+    CowlVector *cowl_nary_data_get_operands(CowlNAryData *range)
     CowlObjCard *cowl_obj_card(CowlCardType type, CowlAnyObjPropExp *prop,
         CowlAnyClsExp *filler, int cardinality)
     CowlObjPropExp *cowl_obj_card_get_prop(CowlObjCard *restr)
@@ -250,6 +294,8 @@ cdef extern from "cowl.h":
     int cowl_obj_card_get_cardinality(CowlObjCard *restr)
     CowlObjCompl *cowl_obj_compl(CowlAnyClsExp *operand)
     CowlClsExp *cowl_obj_compl_get_operand(CowlObjCompl *exp)
+    CowlObjOneOf *cowl_obj_one_of(CowlVector *inds)
+    CowlVector *cowl_obj_one_of_get_inds(CowlObjOneOf *exp)
     CowlObjProp *cowl_obj_prop(CowlIRI *iri)
     CowlObjPropAssertAxiom *cowl_obj_prop_assert_axiom(CowlAnyObjPropExp *prop,
         CowlAnyIndividual *subject, CowlAnyIndividual *object, CowlVector *annot)
@@ -258,6 +304,14 @@ cdef extern from "cowl.h":
     CowlObjPropExp *cowl_obj_prop_assert_axiom_get_prop(CowlObjPropAssertAxiom *axiom)
     CowlIndividual *cowl_obj_prop_assert_axiom_get_subject(CowlObjPropAssertAxiom *axiom)
     CowlIndividual *cowl_obj_prop_assert_axiom_get_object(CowlObjPropAssertAxiom *axiom)
+    CowlObjPropDomainAxiom *cowl_obj_prop_domain_axiom(CowlAnyObjPropExp *prop,
+        CowlAnyClsExp *domain, CowlVector *annot)
+    CowlObjPropExp *cowl_obj_prop_domain_axiom_get_prop(CowlObjPropDomainAxiom *axiom)
+    CowlClsExp *cowl_obj_prop_domain_axiom_get_domain(CowlObjPropDomainAxiom *axiom)
+    CowlObjPropRangeAxiom *cowl_obj_prop_range_axiom(CowlAnyObjPropExp *prop,
+        CowlAnyClsExp *range, CowlVector *annot)
+    CowlObjPropExp *cowl_obj_prop_range_axiom_get_prop(CowlObjPropRangeAxiom *axiom)
+    CowlClsExp *cowl_obj_prop_range_axiom_get_range(CowlObjPropRangeAxiom *axiom)
     CowlObjQuant *cowl_obj_quant(CowlQuantType type, CowlAnyObjPropExp *prop, CowlAnyClsExp *filler)
     CowlObjPropExp *cowl_obj_quant_get_prop(CowlObjQuant *restr)
     CowlClsExp *cowl_obj_quant_get_filler(CowlObjQuant *restr)

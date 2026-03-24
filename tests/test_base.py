@@ -27,16 +27,16 @@ class BasicTest(unittest.TestCase):
     def test_literal(self) -> None:
         value = "Hello, world!"
         lang = "en"
-        dt = cowl.Datatype("http://www.w3.org/2001/XMLSchema#string")
-        lang_dt = cowl.Datatype("http://www.w3.org/1999/02/22-rdf-syntax-ns#langString")
+        str_dt = cowl.XSD.STRING
+        lang_dt = cowl.RDF.LANG_STRING
 
         lit_a = cowl.Literal(value)
-        lit_b = cowl.Literal(value, datatype=dt)
+        lit_b = cowl.Literal(value, datatype=str_dt)
         lit_c = cowl.Literal(value, language=lang)
 
         assert lit_a == lit_b
         assert lit_a.value() == lit_b.value() == lit_c.value() == value
-        assert lit_a.datatype() == lit_b.datatype() == dt
+        assert lit_a.datatype() == lit_b.datatype() == str_dt
         assert lit_c.datatype() == lang_dt
         assert lit_a.language() is lit_b.language() is None
         assert lit_c.language() == lang
@@ -84,7 +84,7 @@ class BasicTest(unittest.TestCase):
             a.is_a(b.that(c | ~d)),
             ind_a.is_a(obj_prop.max(5) & obj_prop.all(c) & obj_prop.some(c)),
             ~obj_prop(ind_a, ind_b),
-            data_prop(ind_a, cowl.Literal("10")),
+            data_prop(ind_a, 10),
         )
 
         onto.add(*axioms)

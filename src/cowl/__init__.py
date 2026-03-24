@@ -7,6 +7,10 @@ from ._types import (
 )
 from ._wrap import (
     IRI,
+    OWL,
+    RDF,
+    RDFS,
+    XSD,
     Annotation,
     AnnotationProperty,
     AnonymousIndividual,
@@ -46,6 +50,10 @@ from ._wrap import (
 
 __all__ = [
     "IRI",
+    "OWL",
+    "RDF",
+    "RDFS",
+    "XSD",
     "Annotation",
     "AnnotationProperty",
     "AnnotationValue",

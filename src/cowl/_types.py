@@ -14,4 +14,5 @@ type AnnotationValue = IRI | Literal | AnonymousIndividual
 type Entity = (
     Class | Datatype | ObjectProperty | DataProperty | AnnotationProperty | NamedIndividual
 )
+type LiteralValue = str | int | float | bool
 type Primitive = Entity | AnonymousIndividual

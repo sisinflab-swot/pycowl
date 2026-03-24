@@ -1,5 +1,4 @@
 # type: ignore
-
 from typing import Type
 from ._c_api cimport *
 
@@ -213,6 +212,7 @@ cdef class Collection(Object):
 
 
 cdef class Datatype(Object):
+
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_datatype(<CowlIRI *>iri_obj.ptr)
@@ -245,13 +245,13 @@ cdef inline void *_iri_from_prefix_suffix(str prefix, str suffix):
 
 
 cdef class Literal(Object):
-
     def __init__(
         self,
-        value: str,
+        value: LiteralValue,
         datatype: Datatype | None = None,
         language: str | None = None,
     ) -> None:
+        value, datatype = _py_to_dt_value(value, datatype)
         cdef CowlString *c_value = cowl_string_from_py(value)
         cdef CowlDatatype *c_dt = <CowlDatatype *>datatype.ptr if datatype else NULL
         cdef CowlString *c_lang = cowl_string_from_py(language) if language else NULL
@@ -268,6 +268,19 @@ cdef class Literal(Object):
     def language(self) -> str | None:
         cdef CowlString *c_str = cowl_literal_get_lang(<CowlLiteral *>self.ptr)
         return cowl_string_to_py(c_str) if c_str else None
+
+
+def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | None]:
+    if isinstance(val, str):
+        return val, dt
+    if isinstance(val, bool):
+        return "true" if val else "false", dt or XSD.BOOLEAN
+    if not dt:
+        if isinstance(val, int):
+            dt = XSD.INTEGER
+        elif isinstance(val, float):
+            dt = XSD.DOUBLE
+    return str(val), dt
 
 
 # Class expressions
@@ -470,8 +483,9 @@ cdef class DataProperty(Object):
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_data_prop(<CowlIRI *>iri_obj.ptr)
 
-    def __call__(self, subj: Individual, obj: Literal) -> DataPropertyAssertion:
-        return DataPropertyAssertion(self, subj, obj)
+    def __call__(self, subj: Individual, value: Literal | LiteralValue) -> DataPropertyAssertion:
+        literal = value if isinstance(value, Literal) else Literal(value)
+        return DataPropertyAssertion(self, subj, literal)
 
 
 # Axioms
@@ -805,3 +819,93 @@ cdef class PrefixMap(Object):
             return self[prefix_or_ns]
         except KeyError:
             return None
+
+
+# Vocabularies
+
+
+cdef class OWL:
+    PREFIX = "owl"
+    NS = "http://www.w3.org/2002/07/owl#"
+
+    BACKWARD_COMPATIBLE_WITH = IRI(NS, "backwardCompatibleWith")
+    DEPRECATED = IRI(NS, "deprecated")
+    INCOMPATIBLE_WITH = IRI(NS, "incompatibleWith")
+    PRIOR_VERSION = IRI(NS, "priorVersion")
+    VERSION_INFO = IRI(NS, "versionInfo")
+
+    BOTTOM_DATA_PROPERTY = DataProperty(IRI(NS, "bottomDataProperty"))
+    BOTTOM_OBJECT_PROPERTY = ObjectProperty(IRI(NS, "bottomObjectProperty"))
+    NOTHING = Class(IRI(NS, "Nothing"))
+    RATIONAL = Datatype(IRI(NS, "rational"))
+    REAL = Datatype(IRI(NS, "real"))
+    THING = Class(IRI(NS, "Thing"))
+    TOP_DATA_PROPERTY = DataProperty(IRI(NS, "topDataProperty"))
+    TOP_OBJECT_PROPERTY = ObjectProperty(IRI(NS, "topObjectProperty"))
+
+
+cdef class RDF:
+    PREFIX = "rdf"
+    NS = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+
+    LANG_RANGE = IRI(NS, "langRange")
+
+    LANG_STRING = Datatype(IRI(NS, "langString"))
+    PLAIN_LITERAL = Datatype(IRI(NS, "PlainLiteral"))
+    XML_LITERAL = Datatype(IRI(NS, "XMLLiteral"))
+
+
+class RDFS:
+    PREFIX = "rdfs"
+    NS = "http://www.w3.org/2000/01/rdf-schema#"
+
+    COMMENT = IRI(NS, "comment")
+    IS_DEFINED_BY = IRI(NS, "isDefinedBy")
+    LABEL = IRI(NS, "label")
+    SEE_ALSO = IRI(NS, "seeAlso")
+
+    LITERAL = Datatype(IRI(NS, "Literal"))
+
+
+cdef class XSD:
+    PREFIX = "xsd"
+    NS = "http://www.w3.org/2001/XMLSchema#"
+
+    LENGTH = IRI(NS, "length")
+    MAX_EXCLUSIVE = IRI(NS, "maxExclusive")
+    MAX_INCLUSIVE = IRI(NS, "maxInclusive")
+    MAX_LENGTH = IRI(NS, "maxLength")
+    MIN_EXCLUSIVE = IRI(NS, "minExclusive")
+    MIN_INCLUSIVE = IRI(NS, "minInclusive")
+    MIN_LENGTH = IRI(NS, "minLength")
+    PATTERN = IRI(NS, "pattern")
+
+    ANY_URI = Datatype(IRI(NS, "anyURI"))
+    BASE64_BINARY = Datatype(IRI(NS, "base64Binary"))
+    BOOLEAN = Datatype(IRI(NS, "boolean"))
+    BYTE = Datatype(IRI(NS, "byte"))
+    DATE_TIME = Datatype(IRI(NS, "dateTime"))
+    DATE_TIME_STAMP = Datatype(IRI(NS, "dateTimeStamp"))
+    DECIMAL = Datatype(IRI(NS, "decimal"))
+    DOUBLE = Datatype(IRI(NS, "double"))
+    FLOAT = Datatype(IRI(NS, "float"))
+    HEX_BINARY = Datatype(IRI(NS, "hexBinary"))
+    INT = Datatype(IRI(NS, "int"))
+    INTEGER = Datatype(IRI(NS, "integer"))
+    LANGUAGE = Datatype(IRI(NS, "language"))
+    LONG = Datatype(IRI(NS, "long"))
+    NAME = Datatype(IRI(NS, "Name"))
+    NCNAME = Datatype(IRI(NS, "NCName"))
+    NEGATIVE_INTEGER = Datatype(IRI(NS, "negativeInteger"))
+    NMTOKEN = Datatype(IRI(NS, "NMTOKEN"))
+    NON_NEGATIVE_INTEGER = Datatype(IRI(NS, "nonNegativeInteger"))
+    NON_POSITIVE_INTEGER = Datatype(IRI(NS, "nonPositiveInteger"))
+    NORMALIZED_STRING = Datatype(IRI(NS, "normalizedString"))
+    POSITIVE_INTEGER = Datatype(IRI(NS, "positiveInteger"))
+    SHORT = Datatype(IRI(NS, "short"))
+    STRING = Datatype(IRI(NS, "string"))
+    TOKEN = Datatype(IRI(NS, "token"))
+    UNSIGNED_BYTE = Datatype(IRI(NS, "unsignedByte"))
+    UNSIGNED_INT = Datatype(IRI(NS, "unsignedInt"))
+    UNSIGNED_LONG = Datatype(IRI(NS, "unsignedLong"))
+    UNSIGNED_SHORT = Datatype(IRI(NS, "unsignedShort"))

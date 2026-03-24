@@ -1,9 +1,11 @@
 from collections.abc import Collection as ABCCollection, Iterable, Iterator
 from pathlib import Path
+from typing import overload
 
 from ._types import (
     AnnotationValue,
     Entity,
+    LiteralValue,
     Primitive,
 )
 
@@ -34,6 +36,10 @@ class Collection[T: Object](Object, ABCCollection[T]):
     def __init__(self, items: Iterable[T]) -> None: ...
 
 class Datatype(Object):
+    INTEGER: Datatype
+    DOUBLE: Datatype
+    BOOLEAN: Datatype
+    STRING: Datatype
     def __init__(self, iri: str | IRI) -> None: ...
 
 class IRI(Object):
@@ -41,11 +47,17 @@ class IRI(Object):
     def as_string(self) -> str: ...
 
 class Literal(Object):
+    @overload
+    def __init__(
+        self,
+        value: LiteralValue,
+        datatype: Datatype | None = None,
+    ) -> None: ...
+    @overload
     def __init__(
         self,
         value: str,
-        datatype: Datatype | None = None,
-        language: str | None = None,
+        language: str,
     ) -> None: ...
     def datatype(self) -> Datatype: ...
     def value(self) -> str: ...
@@ -141,7 +153,11 @@ class InverseObjectProperty(ObjectPropertyExpression):
 
 class DataProperty(Object):
     def __init__(self, iri: str | IRI) -> None: ...
-    def __call__(self, subj: Individual, value: Literal) -> DataPropertyAssertion: ...
+    def __call__(
+        self,
+        subj: Individual,
+        value: Literal | LiteralValue,
+    ) -> DataPropertyAssertion: ...
 
 # Axioms
 
@@ -233,3 +249,88 @@ class PrefixMap(Object):
     def items(self) -> Iterator[tuple[str, str]]: ...
     def prefixes(self) -> Iterator[str]: ...
     def namespaces(self) -> Iterator[str]: ...
+
+# Vocabularies
+
+class OWL:
+    PREFIX: str
+    NS: str
+
+    BACKWARD_COMPATIBLE_WITH: IRI
+    DEPRECATED: IRI
+    INCOMPATIBLE_WITH: IRI
+    PRIOR_VERSION: IRI
+    VERSION_INFO: IRI
+
+    BOTTOM_DATA_PROPERTY: DataProperty
+    BOTTOM_OBJECT_PROPERTY: ObjectProperty
+    NOTHING: Class
+    RATIONAL: Datatype
+    REAL: Datatype
+    THING: Class
+    TOP_DATA_PROPERTY: DataProperty
+    TOP_OBJECT_PROPERTY: ObjectProperty
+
+class RDF:
+    PREFIX: str
+    NS: str
+
+    LANG_RANGE: IRI
+
+    LANG_STRING: Datatype
+    PLAIN_LITERAL: Datatype
+    XML_LITERAL: Datatype
+
+class RDFS:
+    PREFIX: str
+    NS: str
+
+    COMMENT: IRI
+    IS_DEFINED_BY: IRI
+    LABEL: IRI
+    SEE_ALSO: IRI
+
+    LITERAL: Datatype
+
+class XSD:
+    PREFIX: str
+    NS: str
+
+    LENGTH: IRI
+    MAX_EXCLUSIVE: IRI
+    MAX_INCLUSIVE: IRI
+    MAX_LENGTH: IRI
+    MIN_EXCLUSIVE: IRI
+    MIN_INCLUSIVE: IRI
+    MIN_LENGTH: IRI
+    PATTERN: IRI
+
+    ANY_URI: Datatype
+    BASE64_BINARY: Datatype
+    BOOLEAN: Datatype
+    BYTE: Datatype
+    DATE_TIME: Datatype
+    DATE_TIME_STAMP: Datatype
+    DECIMAL: Datatype
+    DOUBLE: Datatype
+    FLOAT: Datatype
+    HEX_BINARY: Datatype
+    INT: Datatype
+    INTEGER: Datatype
+    LANGUAGE: Datatype
+    LONG: Datatype
+    NAME: Datatype
+    NCNAME: Datatype
+    NEGATIVE_INTEGER: Datatype
+    NMTOKEN: Datatype
+    NON_NEGATIVE_INTEGER: Datatype
+    NON_POSITIVE_INTEGER: Datatype
+    NORMALIZED_STRING: Datatype
+    POSITIVE_INTEGER: Datatype
+    SHORT: Datatype
+    STRING: Datatype
+    TOKEN: Datatype
+    UNSIGNED_BYTE: Datatype
+    UNSIGNED_INT: Datatype
+    UNSIGNED_LONG: Datatype
+    UNSIGNED_SHORT: Datatype

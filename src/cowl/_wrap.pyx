@@ -1,5 +1,6 @@
 # type: ignore
-from typing import Type
+from cython cimport cast
+from typing import Generic, Type, TypeVar
 from ._c_api cimport *
 
 
@@ -9,9 +10,28 @@ cowl_init()  # Trigger library initialization on import.
 # C helpers
 
 
+cdef class Ptr:
+    cdef void *p
+
+    @staticmethod
+    cdef Ptr wrap(void *ptr):
+        if not ptr:
+            return NULLPtr
+        cdef Ptr obj = Ptr.__new__(Ptr)
+        obj.p = ptr
+        return obj
+
+    def __dealloc__(self) -> None:
+        if self.p:
+            cowl_release(self.p)
+
+
+cdef Ptr NULLPtr = Ptr.__new__(Ptr)
+
+
 cdef UString ustring_from_py(str pystr):
     encoded = pystr.encode()
-    return ustring_copy(<const char *>encoded, len(pystr))
+    return ustring_copy(<const char *>encoded, len(encoded))
 
 
 cdef str ustring_to_py(UString *ustr, bool deinit = True):
@@ -33,21 +53,29 @@ cdef str ustrbuf_to_py(UStrBuf *buf, bool deinit = True):
     return ret
 
 
-cdef CowlString *cowl_string_from_py(str s):
+cdef CowlString *cowl_string_from_py_raw(str s):
     return cowl_string(ustring_from_py(s))
+
+
+cdef Ptr cowl_string_from_py(str s):
+    return Ptr.wrap(cowl_string_from_py_raw(s))
 
 
 cdef str cowl_string_to_py(CowlString *s):
     return ustring_to_py(<UString *>cowl_string_get_raw(s), deinit=False)
 
 
-cdef CowlVector *cowl_vector_from_py(items: Iterable[Object] | None):
+cdef CowlVector *cowl_vector_from_py_raw(items: Iterable[Object] | None):
     if items is None:
         return NULL
     cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
     for item in items:
-        uvec_push_CowlObjectPtr(&vec, <CowlObject *>(<Object>item).ptr)
+        uvec_push_CowlObjectPtr(&vec, <CowlObject *>(<Object?>item).ptr)
     return cowl_vector(&vec)
+
+
+cdef Ptr cowl_vector_from_py(items: Iterable[Object] | None):
+    return Ptr.wrap(cowl_vector_from_py_raw(items))
 
 
 # Utilities
@@ -153,10 +181,8 @@ cdef class Object:
         cdef UString str_rep = cowl_to_debug_ustring(self.ptr)
         return ustring_to_py(&str_rep)
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Object):
-            return False
-        return cowl_equals(self.ptr, (<Object>other).ptr)
+    def __eq__(self, other: Object) -> bool:
+        return cowl_equals(self.ptr, other.ptr)
 
     def __hash__(self) -> int:
         return hash(cowl_hash(self.ptr))
@@ -191,17 +217,17 @@ cdef class Object:
 
         return cowl_string_to_py(rem_ptr)
 
-    def annotations(self) -> Collection:
+    def annotations(self) -> Collection[Annotation]:
         cdef void *annot_ptr = cowl_get_annot(self.ptr)
         return Object.retain(annot_ptr) if annot_ptr else Collection.empty()
 
     def is_reserved(self) -> bool:
         return cowl_is_reserved(self.ptr)
 
-    def has_primitive(self, primitive: Primitive) -> bool:
-        return cowl_has_primitive(self.ptr, (<Object>primitive).ptr)
+    def has_primitive(self, primitive: Object) -> bool:
+        return cowl_has_primitive(self.ptr, primitive.ptr)
 
-    def primitives(self) -> Collection:
+    def primitives(self) -> Collection[Primitive]:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, False)
         cowl_iterate_primitives(self.ptr, COWL_PF_ALL, &iter)
@@ -230,15 +256,13 @@ cdef class Collection(Object):
         return Object.wrap(cowl_vector_empty())
 
     def __init__(self, items: Iterable[Object]) -> None:
-        self.ptr = cowl_vector_from_py(items)
+        self.ptr = cowl_vector_from_py_raw(items)
 
     def __len__(self) -> int:
         return cowl_vector_count(<CowlVector *>self.ptr)
 
-    def __contains__(self, item: object) -> bool:
-        if not isinstance(item, Object):
-            return False
-        return cowl_vector_contains(<CowlVector *>self.ptr, (<Object>item).ptr)
+    def __contains__(self, item: Object) -> bool:
+        return cowl_vector_contains(<CowlVector *>self.ptr, item.ptr)
 
     def __iter__(self) -> Iterator[Object]:
         cdef CowlVector *vec = <CowlVector *>self.ptr
@@ -266,12 +290,9 @@ cdef inline void *_iri_from_str(str s):
 
 
 cdef inline void *_iri_from_prefix_suffix(str prefix, str suffix):
-    cdef CowlString *c_prefix = cowl_string_from_py(prefix)
-    cdef CowlString *c_suffix = cowl_string_from_py(suffix)
-    cdef void *ret = cowl_iri(c_prefix, c_suffix)
-    cowl_release(c_prefix)
-    cowl_release(c_suffix)
-    return ret
+    cdef Ptr p_ptr = cowl_string_from_py(prefix)
+    cdef Ptr s_ptr = cowl_string_from_py(suffix)
+    return cowl_iri(<CowlString *>p_ptr.p, <CowlString *>s_ptr.p)
 
 
 cdef class Literal(Object):
@@ -282,12 +303,10 @@ cdef class Literal(Object):
         language: str | None = None,
     ) -> None:
         value, datatype = _py_to_dt_value(value, datatype)
-        cdef CowlString *c_value = cowl_string_from_py(value)
         cdef CowlDatatype *c_dt = <CowlDatatype *>datatype.ptr if datatype else NULL
-        cdef CowlString *c_lang = cowl_string_from_py(language) if language else NULL
-        self.ptr = cowl_literal(c_dt, c_value, c_lang)
-        cowl_release(c_value)
-        cowl_release(c_lang)
+        cdef Ptr c_value = cowl_string_from_py(value)
+        cdef Ptr c_lang = cowl_string_from_py(language) if language else NULLPtr
+        self.ptr = cowl_literal(c_dt, <CowlString *>c_value.p, <CowlString *>c_lang.p)
 
     def datatype(self) -> Datatype:
         return Object.retain(cowl_literal_get_datatype(<CowlLiteral *>self.ptr))
@@ -369,18 +388,16 @@ cdef class NAryBooleanClassExpression(ClassExpression):
 
 cdef class ObjectIntersectionOf(NAryBooleanClassExpression):
 
-    def __init__(self, *args: Object) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_INTERSECT, vec)
-        cowl_release(vec)
+    def __init__(self, *args: ClassExpression) -> None:
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_INTERSECT, <CowlVector *>vec.p)
 
 
 cdef class ObjectUnionOf(NAryBooleanClassExpression):
 
-    def __init__(self, *args: Object) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_UNION, vec)
-        cowl_release(vec)
+    def __init__(self, *args: ClassExpression) -> None:
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_UNION, <CowlVector *>vec.p)
 
 
 cdef class ObjectComplementOf(ClassExpression):
@@ -461,9 +478,8 @@ cdef class ObjectExactCardinality(ObjectCardinalityRestriction):
 
 cdef class ObjectOneOf(ClassExpression):
     def __init__(self, *inds: Individual) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(inds)
-        self.ptr = cowl_obj_one_of(vec)
-        cowl_release(vec)
+        cdef Ptr vec = cowl_vector_from_py(inds)
+        self.ptr = cowl_obj_one_of(<CowlVector *>vec.p)
 
     def individuals(self) -> Collection[Individual]:
         return Object.retain(cowl_obj_one_of_get_inds(<CowlObjOneOf *>self.ptr))
@@ -498,7 +514,7 @@ cdef class DataAllValuesFrom(ClassExpression):
 
 
 cdef class DataCardinalityRestriction(ClassExpression):
-    def property(self) -> DataPropertyExpression:
+    def property(self) -> DataProperty:
         return Object.retain(cowl_data_card_get_prop(<CowlDataCard *>self.ptr))
 
     def cardinality(self) -> int:
@@ -512,37 +528,37 @@ cdef class DataCardinalityRestriction(ClassExpression):
 cdef class DataMinCardinality(DataCardinalityRestriction):
     def __init__(
         self,
-        prop: DataPropertyExpression,
+        prop: DataProperty,
         cardinality: int,
         data_range: DataRange | None = None
     ) -> None:
         cdef CowlCardType ctype = CowlCardType.COWL_CT_MIN
-        cdef void *range_ptr = (<Object>data_range).ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, (<Object>prop).ptr, range_ptr, cardinality)
+        cdef void *range_ptr = data_range.ptr if data_range else NULL
+        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
 
 
 cdef class DataMaxCardinality(DataCardinalityRestriction):
     def __init__(
         self,
-        prop: DataPropertyExpression,
+        prop: DataProperty,
         cardinality: int,
         data_range: DataRange | None = None
     ) -> None:
         cdef CowlCardType ctype = CowlCardType.COWL_CT_MAX
-        cdef void *range_ptr = (<Object>data_range).ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, (<Object>prop).ptr, range_ptr, cardinality)
+        cdef void *range_ptr = data_range.ptr if data_range else NULL
+        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
 
 
 cdef class DataExactCardinality(DataCardinalityRestriction):
     def __init__(
         self,
-        prop: DataPropertyExpression,
+        prop: DataProperty,
         cardinality: int,
         data_range: DataRange | None = None
     ) -> None:
         cdef CowlCardType ctype = CowlCardType.COWL_CT_EXACT
-        cdef void *range_ptr = (<Object>data_range).ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, (<Object>prop).ptr, range_ptr, cardinality)
+        cdef void *range_ptr = data_range.ptr if data_range else NULL
+        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
 
 
 # Data ranges
@@ -566,16 +582,14 @@ cdef class NAryDataRange(DataRange):
 
 cdef class DataIntersectionOf(NAryDataRange):
     def __init__(self, *args: DataRange) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_INTERSECT, vec)
-        cowl_release(vec)
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_INTERSECT, <CowlVector *>vec.p)
 
 
 cdef class DataUnionOf(NAryDataRange):
     def __init__(self, *args: DataRange) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_UNION, vec)
-        cowl_release(vec)
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_UNION, <CowlVector *>vec.p)
 
 
 cdef class DataComplementOf(DataRange):
@@ -588,9 +602,8 @@ cdef class DataComplementOf(DataRange):
 
 cdef class DataOneOf(DataRange):
     def __init__(self, *values: Literal) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(values)
-        self.ptr = cowl_data_one_of(vec)
-        cowl_release(vec)
+        cdef Ptr vec = cowl_vector_from_py(values)
+        self.ptr = cowl_data_one_of(<CowlVector *>vec.p)
 
     def values(self) -> Collection:
         return Object.retain(cowl_data_one_of_get_values(<CowlDataOneOf *>self.ptr))
@@ -612,8 +625,8 @@ cdef class NamedIndividual(Individual):
 
 cdef class AnonymousIndividual(Individual):
     def __init__(self, node_id: str | None = None) -> None:
-        cdef CowlString *c_str = cowl_string_from_py(node_id) if node_id else NULL
-        self.ptr = cowl_anon_ind(c_str)
+        cdef Ptr c_str = cowl_string_from_py(node_id) if node_id else NULLPtr
+        self.ptr = cowl_anon_ind(<CowlString *>c_str.p)
 
 
 # Object peoperty expressions
@@ -706,9 +719,8 @@ cdef class Declaration(Axiom):
         entity: Object,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_decl_axiom(entity.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_decl_axiom(entity.ptr, <CowlVector *>annot.p)
 
     def entity(self) -> Object:
         return Object.retain(cowl_decl_axiom_get_entity(<CowlDeclAxiom *>self.ptr))
@@ -718,63 +730,58 @@ cdef class SubClassOf(Axiom):
 
     def __init__(
         self,
-        sub_class: Object,
-        super_class: Object,
+        sub_class: ClassExpression,
+        super_class: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_sub_cls_axiom(sub_class.ptr, super_class.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_sub_cls_axiom(sub_class.ptr, super_class.ptr, <CowlVector *>annot.p)
 
-    def sub_class(self) -> Object:
+    def sub_class(self) -> ClassExpression:
         return Object.retain(cowl_sub_cls_axiom_get_sub(<CowlSubClsAxiom *>self.ptr))
 
-    def super_class(self) -> Object:
+    def super_class(self) -> ClassExpression:
         return Object.retain(cowl_sub_cls_axiom_get_super(<CowlSubClsAxiom *>self.ptr))
 
 
 cdef class NAryClassAxiom(Axiom):
-    def classes(self) -> Collection:
+    def classes(self) -> Collection[ClassExpression]:
         return Object.retain(cowl_nary_cls_axiom_get_classes(<CowlNAryClsAxiom *>self.ptr))
 
 
 cdef class EquivalentClasses(NAryClassAxiom):
     def __init__(
         self,
-        *classes: Object,
+        *classes: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *vec = cowl_vector_from_py(classes)
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_nary_cls_axiom(CowlNAryAxiomType.COWL_NAT_EQUIV, vec, annot)
-        cowl_release(vec)
-        cowl_release(annot)
+        cdef Ptr vec = cowl_vector_from_py(classes)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_cls_axiom(CowlNAryAxiomType.COWL_NAT_EQUIV,
+                                       <CowlVector *>vec.p, <CowlVector *>annot.p)
 
 
 cdef class DisjointClasses(NAryClassAxiom):
     def __init__(
         self,
-        *classes: Object,
+        *classes: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlNAryAxiomType axiom_type = CowlNAryAxiomType.COWL_NAT_DISJ
-        cdef CowlVector *vec = cowl_vector_from_py(classes)
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_nary_cls_axiom(axiom_type, vec, annot)
-        cowl_release(vec)
-        cowl_release(annot)
+        cdef Ptr vec = cowl_vector_from_py(classes)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_cls_axiom(CowlNAryAxiomType.COWL_NAT_DISJ,
+                                       <CowlVector *>vec.p, <CowlVector *>annot.p)
 
 
 cdef class ClassAssertion(Axiom):
     def __init__(
         self,
-        cls: Object,
-        ind: Object,
+        cls: ClassExpression,
+        ind: Individual,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_cls_assert_axiom(cls.ptr, ind.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_cls_assert_axiom(cls.ptr, ind.ptr, <CowlVector *>annot.p)
 
     def class_expression(self) -> ClassExpression:
         return Object.retain(cowl_cls_assert_axiom_get_cls_exp(<CowlClsAssertAxiom *>self.ptr))
@@ -791,9 +798,8 @@ cdef class ObjectPropertyAssertion(Axiom):
         object: Individual,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, <CowlVector *>annot.p)
 
     def __invert__(self) -> ObjectPropertyAssertion:
         return NegativeObjectPropertyAssertion(
@@ -821,9 +827,8 @@ cdef class NegativeObjectPropertyAssertion(ObjectPropertyAssertion):
         object: Individual,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_neg_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_neg_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, <CowlVector *>annot.p)
 
     def __invert__(self) -> ObjectPropertyAssertion:
         return ObjectPropertyAssertion(
@@ -841,9 +846,8 @@ cdef class ObjectPropertyDomain(Axiom):
         domain: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_obj_prop_domain_axiom(prop.ptr, domain.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_obj_prop_domain_axiom(prop.ptr, domain.ptr, <CowlVector *>annot.p)
 
     def property(self) -> ObjectPropertyExpression:
         return Object.retain(cowl_obj_prop_domain_axiom_get_prop(<CowlObjPropDomainAxiom *>self.ptr))
@@ -859,9 +863,8 @@ cdef class ObjectPropertyRange(Axiom):
         prop_range: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_obj_prop_range_axiom(prop.ptr, prop_range.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_obj_prop_range_axiom(prop.ptr, prop_range.ptr, <CowlVector *>annot.p)
 
     def property(self) -> ObjectPropertyExpression:
         return Object.retain(cowl_obj_prop_range_axiom_get_prop(<CowlObjPropRangeAxiom *>self.ptr))
@@ -878,9 +881,8 @@ cdef class DataPropertyAssertion(Axiom):
         value: Literal,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
 
     def __invert__(self) -> DataPropertyAssertion:
         return NegativeDataPropertyAssertion(
@@ -908,10 +910,8 @@ cdef class NegativeDataPropertyAssertion(DataPropertyAssertion):
         value: Literal,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        cdef CowlLiteral *lit = <CowlLiteral *>value.ptr
-        self.ptr = cowl_neg_data_prop_assert_axiom(prop.ptr, subj.ptr, lit, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_neg_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
 
     def __invert__(self) -> DataPropertyAssertion:
         return DataPropertyAssertion(
@@ -929,9 +929,8 @@ cdef class DataPropertyDomain(Axiom):
         domain: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_data_prop_domain_axiom(prop.ptr, domain.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_data_prop_domain_axiom(prop.ptr, domain.ptr, <CowlVector *>annot.p)
 
     def property(self) -> DataProperty:
         return Object.retain(cowl_data_prop_domain_axiom_get_prop(<CowlDataPropDomainAxiom *>self.ptr))
@@ -947,9 +946,8 @@ cdef class DataPropertyRange(Axiom):
         prop_range: DataRange,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
-        cdef CowlVector *annot = NULL if annotations is None else cowl_vector_from_py(annotations)
-        self.ptr = cowl_data_prop_range_axiom(prop.ptr, prop_range.ptr, annot)
-        cowl_release(annot)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_data_prop_range_axiom(prop.ptr, prop_range.ptr, <CowlVector *>annot.p)
 
     def property(self) -> DataProperty:
         return Object.retain(cowl_data_prop_range_axiom_get_prop(<CowlDataPropRangeAxiom *>self.ptr))
@@ -984,10 +982,7 @@ cdef class Ontology(Object):
     def __init__(self) -> None:
         self.ptr = cowl_ontology()
 
-    def __contains__(self, item: object) -> bool:
-        if not isinstance(item, Object):
-            return False
-        cdef Object obj = <Object>item
+    def __contains__(self, obj: Object) -> bool:
         if obj.is_axiom():
             return cowl_ontology_has_axiom(<CowlOntology *>self.ptr, obj.ptr)
         if obj.is_primitive():
@@ -1020,31 +1015,35 @@ cdef class Ontology(Object):
         cdef IRI iri_obj = version if isinstance(version, IRI) else IRI(version)
         cowl_ontology_set_version(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
 
-    def axioms(self) -> Collection:
+    def axioms(self) -> Collection[Axiom]:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, False)
         cowl_ontology_iterate_axioms(<CowlOntology *>self.ptr, &iter)
         return Object.wrap(cowl_vector(&vec))
 
     def _add(self, item: Object) -> None:
-        if isinstance(item, Annotation):
+        if item.is_axiom():
+            cowl_ontology_add_axiom(<CowlOntology *>self.ptr, item.ptr)
+        elif isinstance(item, Annotation):
             cowl_ontology_add_annot(<CowlOntology *>self.ptr, <CowlAnnotation *>item.ptr)
         elif isinstance(item, IRI):
             cowl_ontology_add_import(<CowlOntology *>self.ptr, <CowlIRI *>item.ptr)
         else:
-            cowl_ontology_add_axiom(<CowlOntology *>self.ptr, item.ptr)
+            raise TypeError(f"Unsupported item type: {type(item).__name__}")
 
     def add(self, *args: Object) -> None:
         for item in args:
             self._add(item)
 
     def _remove(self, item: Object) -> None:
-        if isinstance(item, Annotation):
+        if item.is_axiom():
+            cowl_ontology_remove_axiom(<CowlOntology *>self.ptr, item.ptr)
+        elif isinstance(item, Annotation):
             cowl_ontology_remove_annot(<CowlOntology *>self.ptr, <CowlAnnotation *>item.ptr)
         elif isinstance(item, IRI):
             cowl_ontology_remove_import(<CowlOntology *>self.ptr, <CowlIRI *>item.ptr)
         else:
-            cowl_ontology_remove_axiom(<CowlOntology *>self.ptr, item.ptr)
+            raise TypeError(f"Unsupported item type: {type(item).__name__}")
 
     def remove(self, *args: Object) -> None:
         for item in args:
@@ -1063,28 +1062,26 @@ cdef class PrefixMap(Object):
         return self.get(prefix_or_ns) is not None
 
     def __setitem__(self, prefix: str, ns: str) -> None:
-        cdef CowlString *c_prefix = cowl_string_from_py(prefix)
-        cdef CowlString *c_ns = cowl_string_from_py(ns)
-        cowl_prefix_map_add(<CowlPrefixMap *>self.ptr, c_prefix, c_ns, True)
-        cowl_release(c_prefix)
-        cowl_release(c_ns)
+        cdef Ptr p = cowl_string_from_py(prefix)
+        cdef Ptr n = cowl_string_from_py(ns)
+        cowl_prefix_map_add(<CowlPrefixMap *>self.ptr, <CowlString *>p.p, <CowlString *>n.p, True)
 
     def __getitem__(self, prefix_or_ns: str) -> str:
-        cdef CowlString *c_str = cowl_string_from_py(prefix_or_ns)
+        cdef Ptr ptr = cowl_string_from_py(prefix_or_ns)
+        cdef CowlString *c_str = <CowlString *>ptr.p
         cdef CowlString *result = cowl_prefix_map_get_ns(<CowlPrefixMap *>self.ptr, c_str)
         if not result:
             result = cowl_prefix_map_get_prefix(<CowlPrefixMap *>self.ptr, c_str)
-        cowl_release(c_str)
         if not result:
             raise KeyError(prefix_or_ns)
         return cowl_string_to_py(result)
 
     def __delitem__(self, prefix_or_ns: str) -> None:
-        cdef CowlString *c_str = cowl_string_from_py(prefix_or_ns)
+        cdef Ptr ptr = cowl_string_from_py(prefix_or_ns)
+        cdef CowlString *c_str = <CowlString *>ptr.p
         cdef cowl_ret ret = cowl_prefix_map_remove_prefix(<CowlPrefixMap *>self.ptr, c_str)
         if ret == Ret.NO:
             ret = cowl_prefix_map_remove_ns(<CowlPrefixMap *>self.ptr, c_str)
-        cowl_release(c_str)
         if ret == Ret.NO:
             raise KeyError(prefix_or_ns)
 

@@ -67,6 +67,7 @@ from ._wrap import (
     ObjectUnionOf,
     Ontology,
     PrefixMap,
+    PrimitiveFactory,
     SubClassOf,
     one_of,
 )
@@ -136,6 +137,7 @@ __all__ = [
     "Ontology",
     "PrefixMap",
     "Primitive",
+    "PrimitiveFactory",
     "SubClassOf",
     "one_of",
 ]

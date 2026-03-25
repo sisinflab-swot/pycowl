@@ -65,20 +65,17 @@ class BasicTest(unittest.TestCase):
         assert orig_primitives == other_primitives
 
     def test_edit(self) -> None:
-        iri = "http://example.org/test"
-        ns = iri + "#"
-
         onto = cowl.Ontology()
-        onto.set_iri(iri, update_prefix=True)
+        onto.set_iri("http://example.org/test", update_prefix=True)
 
-        a = cowl.Class(ns + "A")
-        b = cowl.Class(ns + "B")
-        c = cowl.Class(ns + "C")
-        d = cowl.Class(ns + "D")
-        obj_prop = cowl.ObjectProperty(ns + "objProp")
-        data_prop = cowl.DataProperty(ns + "dataProp")
-        ind_a = cowl.NamedIndividual(ns + "ind_a")
-        ind_b = cowl.NamedIndividual(ns + "ind_b")
+        a = onto.Class("A")
+        b = onto.Class("B")
+        c = onto.Class("C")
+        d = onto.Class("D")
+        obj_prop = onto.ObjectProperty("objProp")
+        data_prop = onto.DataProperty("dataProp")
+        ind_a = onto.Individual("indA")
+        ind_b = onto.Individual("indB")
 
         axioms: tuple[cowl.Axiom, ...] = (
             a.is_a(b.that(c | ~d)),

@@ -1,6 +1,5 @@
 # type: ignore
-from cython cimport cast
-from typing import Generic, Type, TypeVar
+from typing import Protocol, Type, overload
 from ._c_api cimport *
 
 
@@ -284,7 +283,7 @@ cdef class IRI(Object):
 
 cdef inline void *_iri_from_str(str s):
     cdef UString u_str = ustring_from_py(s)
-    cdef void *ret = cowl_iri_from_string(u_str)
+    cdef CowlIRI *ret = cowl_iri_from_string(u_str)
     ustring_deinit(&u_str)
     return ret
 
@@ -959,7 +958,43 @@ cdef class DataPropertyRange(Axiom):
 # Ontology
 
 
-cdef class Ontology(Object):
+class PrimitiveFactory(Protocol):
+    __slots__ = ()
+
+    def IRI(self, iri: str) -> IRI: ...
+
+    def Class(self, iri: str | IRI) -> Class:
+        return Class(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def Datatype(self, iri: str | IRI) -> Datatype:
+        return Datatype(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def ObjectProperty(self, iri: str | IRI) -> ObjectProperty:
+        return ObjectProperty(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def DataProperty(self, iri: str | IRI) -> DataProperty:
+        return DataProperty(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def AnnotationProperty(self, iri: str | IRI) -> AnnotationProperty:
+        return AnnotationProperty(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def NamedIndividual(self, iri: str | IRI) -> NamedIndividual:
+        return NamedIndividual(iri if isinstance(iri, IRI) else self.IRI(iri))
+
+    def AnonymousIndividual(self, node_id: str | None = None) -> AnonymousIndividual:
+        return AnonymousIndividual(node_id)
+
+    @overload
+    def Individual(self, iri: str | IRI) -> NamedIndividual: ...
+
+    @overload
+    def Individual(self) -> AnonymousIndividual: ...
+
+    def Individual(self, iri: str | IRI | None = None) -> NamedIndividual | AnonymousIndividual:
+        return self.NamedIndividual(iri) if iri else self.AnonymousIndividual()
+
+
+cdef class Ontology(Object, PrimitiveFactory):
     cdef PrefixMap _pm
 
     @classmethod
@@ -996,6 +1031,9 @@ cdef class Ontology(Object):
         cowl_ontology_to_stream(<CowlOntology *>self.ptr, &stream)
         uostream_deinit(&stream)
         return ustrbuf_to_py(&buf)
+
+    def IRI(self, iri: str) -> IRI:
+        return self.prefix_map.IRI(iri)
 
     def to_path(self, path: Path | str) -> None:
         cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
@@ -1050,10 +1088,17 @@ cdef class Ontology(Object):
             self._remove(item)
 
 
-cdef class PrefixMap(Object):
+cdef class PrefixMap(Object, PrimitiveFactory):
+
     @staticmethod
     def default() -> PrefixMap:
         return Object.retain(cowl_get_prefix_map())
+
+    def IRI(self, iri: str) -> IRI:
+        cdef UString iri_str = ustring_from_py(iri if ":" in iri else ":" + iri)
+        cdef CowlIRI *iri_ptr = cowl_prefix_map_parse_iri(<CowlPrefixMap *>self.ptr, iri_str)
+        ustring_deinit(&iri_str)
+        return Object.wrap(iri_ptr)
 
     def __init__(self) -> None:
         self.ptr = cowl_prefix_map()

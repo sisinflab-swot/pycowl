@@ -2,8 +2,6 @@
 
 from ._types import (
     AnnotationValue,
-    Entity,
-    Primitive,
 )
 from ._wrap import (
     IRI,
@@ -38,6 +36,7 @@ from ._wrap import (
     DataUnionOf,
     Declaration,
     DisjointClasses,
+    Entity,
     EquivalentClasses,
     Individual,
     InverseObjectProperty,
@@ -67,6 +66,7 @@ from ._wrap import (
     ObjectUnionOf,
     Ontology,
     PrefixMap,
+    Primitive,
     PrimitiveFactory,
     SubClassOf,
     one_of,

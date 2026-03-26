@@ -1,5 +1,5 @@
 # type: ignore
-from typing import Protocol, Type, overload
+from typing import NoReturn, Protocol, Type, overload
 from ._c_api cimport *
 
 
@@ -165,8 +165,8 @@ cdef class Object:
     def __cinit__(self):
         self.ptr = NULL
 
-    def __init__(self) -> None:
-        raise TypeError("Object cannot be instantiated directly")
+    def __init__(self) -> NoReturn:
+        raise RuntimeError("Object cannot be instantiated directly")
 
     def __dealloc__(self):
         if self.ptr:
@@ -186,11 +186,32 @@ cdef class Object:
     def __hash__(self) -> int:
         return hash(cowl_hash(self.ptr))
 
-    cdef bool is_axiom(self):
+    cpdef bool is_primitive(self):
+        return cowl_is_primitive(self.ptr)
+
+    cpdef bool is_entity(self):
+        return cowl_is_entity(self.ptr)
+
+    cpdef bool is_axiom(self):
         return cowl_is_axiom(self.ptr)
 
-    cdef bool is_primitive(self):
-        return cowl_is_primitive(self.ptr)
+    cpdef bool is_class_expression(self):
+        return cowl_is_cls_exp(self.ptr)
+
+    cpdef bool is_data_range(self):
+        return cowl_is_data_range(self.ptr)
+
+    cpdef bool is_object_property_expression(self):
+        return cowl_is_obj_prop_exp(self.ptr)
+
+    cpdef bool is_data_property_expression(self):
+        return cowl_is_data_prop_exp(self.ptr)
+
+    cpdef bool is_individual(self):
+        return cowl_is_individual(self.ptr)
+
+    def is_reserved(self) -> bool:
+        return cowl_is_reserved(self.ptr)
 
     def iri(self) -> IRI:
         cdef void *iri_ptr = cowl_get_iri(self.ptr)
@@ -220,9 +241,6 @@ cdef class Object:
         cdef void *annot_ptr = cowl_get_annot(self.ptr)
         return Object.retain(annot_ptr) if annot_ptr else Collection.empty()
 
-    def is_reserved(self) -> bool:
-        return cowl_is_reserved(self.ptr)
-
     def has_primitive(self, primitive: Object) -> bool:
         return cowl_has_primitive(self.ptr, primitive.ptr)
 
@@ -233,7 +251,18 @@ cdef class Object:
         return Object.wrap(cowl_vector(&vec))
 
 
-cdef class AnnotationProperty(Object):
+class Primitive:
+    __slots__ = ()
+
+
+class Entity:
+    __slots__ = ()
+
+    def declare(self) -> Declaration:
+        return Declaration(self)
+
+
+cdef class AnnotationProperty(Object, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_annot_prop(<CowlIRI *>iri_obj.ptr)
@@ -271,7 +300,7 @@ cdef class Collection(Object):
             yield Object.retain(cowl_vector_get_item(vec, i))
 
 
-cdef class IRI(Object):
+cdef class IRI(Object, Primitive):
 
     def __init__(self, prefix: str, suffix: str | None = None) -> None:
         self.ptr = _iri_from_prefix_suffix(prefix, suffix) if suffix else _iri_from_str(prefix)
@@ -374,7 +403,7 @@ cdef class ClassExpression(Object):
         )
 
 
-cdef class Class(ClassExpression):
+cdef class Class(ClassExpression, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_class(<CowlIRI *>iri_obj.ptr)
@@ -568,7 +597,7 @@ cdef class DataRange(Object):
         return self.operand() if isinstance(self, DataComplementOf) else DataComplementOf(self)
 
 
-cdef class Datatype(DataRange):
+cdef class Datatype(DataRange, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_datatype(<CowlIRI *>iri_obj.ptr)
@@ -604,19 +633,19 @@ cdef class DataOneOf(DataRange):
         cdef Ptr vec = cowl_vector_from_py(values)
         self.ptr = cowl_data_one_of(<CowlVector *>vec.p)
 
-    def values(self) -> Collection:
+    def values(self) -> Collection[Literal]:
         return Object.retain(cowl_data_one_of_get_values(<CowlDataOneOf *>self.ptr))
 
 
 # Individuals
 
 
-cdef class Individual(Object):
+cdef class Individual(Object, Primitive):
     def is_a(self, cls: ClassExpression) -> ClassAssertion:
         return ClassAssertion(cls, self)
 
 
-cdef class NamedIndividual(Individual):
+cdef class NamedIndividual(Individual, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_named_ind(<CowlIRI *>iri_obj.ptr)
@@ -657,7 +686,7 @@ cdef class ObjectPropertyExpression(Object):
         return ObjectPropertyAssertion(self, subj, obj)
 
 
-cdef class ObjectProperty(ObjectPropertyExpression):
+cdef class ObjectProperty(ObjectPropertyExpression, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_obj_prop(<CowlIRI *>iri_obj.ptr)
@@ -674,7 +703,7 @@ cdef class InverseObjectProperty(ObjectPropertyExpression):
 # Data property expressions
 
 
-cdef class DataProperty(Object):
+cdef class DataProperty(Object, Entity):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
         self.ptr = cowl_data_prop(<CowlIRI *>iri_obj.ptr)
@@ -1048,6 +1077,10 @@ cdef class Ontology(Object, PrimitiveFactory):
             if not (iri_str.endswith("#") or iri_str.endswith("/")):
                 iri_str += "#"
             self.prefix_map[""] = iri_str
+
+    def version(self) -> IRI | None:
+        cdef CowlIRI *version_ptr = cowl_ontology_get_version(<CowlOntology *>self.ptr)
+        return Object.retain(version_ptr) if version_ptr else None
 
     def set_version(self, version: str | IRI) -> None:
         cdef IRI iri_obj = version if isinstance(version, IRI) else IRI(version)

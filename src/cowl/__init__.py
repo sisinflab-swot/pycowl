@@ -1,8 +1,5 @@
 """Exported symbols."""
 
-from ._types import (
-    AnnotationValue,
-)
 from ._wrap import (
     IRI,
     OWL,
@@ -11,6 +8,7 @@ from ._wrap import (
     XSD,
     Annotation,
     AnnotationProperty,
+    AnnotationValue,
     AnonymousIndividual,
     Axiom,
     Class,
@@ -41,6 +39,7 @@ from ._wrap import (
     Individual,
     InverseObjectProperty,
     Literal,
+    LiteralValue,
     NamedIndividual,
     NAryBooleanClassExpression,
     NAryClassAxiom,
@@ -65,6 +64,7 @@ from ._wrap import (
     ObjectSomeValuesFrom,
     ObjectUnionOf,
     Ontology,
+    Position,
     PrefixMap,
     Primitive,
     PrimitiveFactory,
@@ -111,6 +111,7 @@ __all__ = [
     "Individual",
     "InverseObjectProperty",
     "Literal",
+    "LiteralValue",
     "NAryBooleanClassExpression",
     "NAryClassAxiom",
     "NAryDataRange",
@@ -135,6 +136,7 @@ __all__ = [
     "ObjectSomeValuesFrom",
     "ObjectUnionOf",
     "Ontology",
+    "Position",
     "PrefixMap",
     "Primitive",
     "PrimitiveFactory",

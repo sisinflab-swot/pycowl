@@ -36,6 +36,10 @@ cdef extern from "cowl.h":
 
     ctypedef int cowl_ret
 
+    ctypedef uint8_t CowlAxiomFlags
+    CowlAxiomFlags COWL_AF_NONE
+    CowlAxiomFlags COWL_AF_ALL
+
     ctypedef uint8_t CowlPrimitiveFlags
     CowlPrimitiveFlags COWL_PF_NONE
     CowlPrimitiveFlags COWL_PF_ALL
@@ -48,6 +52,16 @@ cdef extern from "cowl.h":
     CowlPrimitiveFlags COWL_PF_ANON_IND
     CowlPrimitiveFlags COWL_PF_IRI
     CowlPrimitiveFlags COWL_PF_ENTITY
+
+    ctypedef uint8_t CowlPosition
+    CowlPosition COWL_PS_NONE
+    CowlPosition COWL_PS_LEFT
+    CowlPosition COWL_PS_RIGHT
+    CowlPosition COWL_PS_MIDDLE
+    CowlPosition COWL_PS_ANY
+    CowlPosition COWL_PS_SUBJECT
+    CowlPosition COWL_PS_PREDICATE
+    CowlPosition COWL_PS_OBJECT
 
     ctypedef void CowlAny
     ctypedef void CowlAnyAnnotValue
@@ -65,6 +79,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlAnnotValue: pass
     ctypedef struct CowlAnonInd: pass
     ctypedef struct CowlAxiom: pass
+    ctypedef struct CowlAxiomFilter: pass
     ctypedef struct CowlClass: pass
     ctypedef struct CowlClsAssertAxiom: pass
     ctypedef struct CowlClsExp: pass
@@ -81,10 +96,13 @@ cdef extern from "cowl.h":
     ctypedef struct CowlDatatype: pass
     ctypedef struct CowlDeclAxiom: pass
     ctypedef struct CowlEntity: pass
+    ctypedef struct CowlFilter: pass
     ctypedef struct CowlIndividual: pass
     ctypedef struct CowlInvObjProp: pass
     ctypedef struct CowlIRI: pass
-    ctypedef struct CowlIterator: pass
+    ctypedef struct CowlIterator:
+        void *ctx
+        cowl_ret (*for_each)(void *ctx, CowlAny *object)
     ctypedef struct CowlLiteral: pass
     ctypedef struct CowlNamedInd: pass
     ctypedef struct CowlNAryBool: pass
@@ -108,6 +126,45 @@ cdef extern from "cowl.h":
     ctypedef struct CowlVector: pass
     ctypedef struct UHash_CowlObjectPtr: pass
     ctypedef struct UVec_CowlObjectPtr: pass
+
+    cdef enum CowlAxiomType:
+        COWL_AT_DECL
+        COWL_AT_SUB_CLASS
+        COWL_AT_EQUIV_CLASSES
+        COWL_AT_DISJ_CLASSES
+        COWL_AT_DISJ_UNION
+        COWL_AT_SUB_OBJ_PROP
+        COWL_AT_EQUIV_OBJ_PROP
+        COWL_AT_DISJ_OBJ_PROP
+        COWL_AT_INV_OBJ_PROP
+        COWL_AT_OBJ_PROP_DOMAIN
+        COWL_AT_OBJ_PROP_RANGE
+        COWL_AT_FUNC_OBJ_PROP
+        COWL_AT_INV_FUNC_OBJ_PROP
+        COWL_AT_REFL_OBJ_PROP
+        COWL_AT_IRREFL_OBJ_PROP
+        COWL_AT_SYMM_OBJ_PROP
+        COWL_AT_ASYMM_OBJ_PROP
+        COWL_AT_TRANS_OBJ_PROP
+        COWL_AT_SUB_DATA_PROP
+        COWL_AT_EQUIV_DATA_PROP
+        COWL_AT_DISJ_DATA_PROP
+        COWL_AT_DATA_PROP_DOMAIN
+        COWL_AT_DATA_PROP_RANGE
+        COWL_AT_FUNC_DATA_PROP
+        COWL_AT_DATATYPE_DEF
+        COWL_AT_HAS_KEY
+        COWL_AT_SAME_IND
+        COWL_AT_DIFF_IND
+        COWL_AT_CLASS_ASSERT
+        COWL_AT_OBJ_PROP_ASSERT
+        COWL_AT_NEG_OBJ_PROP_ASSERT
+        COWL_AT_DATA_PROP_ASSERT
+        COWL_AT_NEG_DATA_PROP_ASSERT
+        COWL_AT_ANNOT_ASSERT
+        COWL_AT_SUB_ANNOT_PROP
+        COWL_AT_ANNOT_PROP_DOMAIN
+        COWL_AT_ANNOT_PROP_RANGE
 
     cdef enum CowlObjectType:
         COWL_OT_STRING
@@ -189,6 +246,7 @@ cdef extern from "cowl.h":
         COWL_OT_I_NAMED
         COWL_OT_I_ANONYMOUS
         COWL_OT_COUNT
+        COWL_OT_FIRST_A
 
     cdef enum CowlCardType:
         COWL_CT_MIN
@@ -239,6 +297,12 @@ cdef extern from "cowl.h":
     CowlAnnotValue *cowl_annotation_get_value(CowlAnnotation *annot)
     CowlVector *cowl_annotation_get_annot(CowlAnnotation *annot)
     CowlAnonInd *cowl_anon_ind(CowlString *id)
+    CowlAxiomFilter cowl_axiom_filter(CowlAxiomFlags types)
+    void cowl_axiom_filter_deinit(CowlAxiomFilter *filter)
+    void cowl_axiom_filter_add_type(CowlAxiomFilter *filter, CowlAxiomType type)
+    cowl_ret cowl_axiom_filter_add_primitive(CowlAxiomFilter *filter, CowlAnyPrimitive *primitive)
+    void cowl_axiom_filter_set_closure(CowlAxiomFilter *filter, CowlFilter closure)
+    CowlAxiomFlags cowl_axiom_flags_add_type(CowlAxiomFlags flags, CowlAxiomType type)
     CowlClass *cowl_class(CowlIRI *iri)
     CowlClsAssertAxiom *cowl_cls_assert_axiom(CowlAnyClsExp *exp, CowlAnyIndividual *ind, CowlVector *annot)
     CowlClsExp *cowl_cls_assert_axiom_get_cls_exp(CowlClsAssertAxiom *axiom)
@@ -331,6 +395,14 @@ cdef extern from "cowl.h":
     bint cowl_ontology_has_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     bint cowl_ontology_has_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
     cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
+    cowl_ret cowl_ontology_iterate_axioms_of_types(CowlOntology *onto,
+        CowlAxiomFlags types, CowlIterator *iter)
+    cowl_ret cowl_ontology_iterate_axioms_for_primitive(CowlOntology *onto,
+        CowlAnyPrimitive *primitive, CowlIterator *iter)
+    cowl_ret cowl_ontology_iterate_axioms_matching(CowlOntology *onto,
+        CowlAxiomFilter *filter, CowlIterator *iter)
+    cowl_ret cowl_ontology_iterate_related(CowlOntology *onto, CowlAnyPrimitive *primitive,
+        CowlAxiomType type, CowlPosition position, CowlIterator *iter)
     bint cowl_ontology_remove_annot(CowlOntology *onto, CowlAnnotation *annot)
     bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     bint cowl_ontology_remove_import(CowlOntology *onto, CowlIRI *iri)
@@ -360,7 +432,7 @@ cdef extern from "cowl.h":
     CowlAny *cowl_table_get_any(CowlTable *table)
     bint cowl_table_contains(CowlTable *table, CowlAny *key)
     CowlVector *cowl_vector(UVec_CowlObjectPtr *data)
-    CowlVector *cowl_vector_empty()
+    CowlVector *cowl_vector_wrap(UVec_CowlObjectPtr *data)
     const UVec_CowlObjectPtr *cowl_vector_get_data(CowlVector *vec)
     int cowl_vector_count(CowlVector *vec)
     CowlAny *cowl_vector_get_item(CowlVector *vec, int idx)

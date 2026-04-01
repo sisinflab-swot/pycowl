@@ -12,19 +12,22 @@ cowl_init()  # Trigger native library initialization on import.
 
 
 LiteralValue: TypeAlias = Union[str, int, float, bool]
+AnnotationSubject: TypeAlias = Union['IRI', 'AnonymousIndividual']
 AnnotationValue: TypeAlias = Union['IRI', 'Literal', 'AnonymousIndividual']
 
 
 cdef list[type[Object]] _TYPES
 cdef dict[type[Object], CowlObjectType] _TYPES_R
+cdef dict[str, tuple[IRI, Datatype]] _FACETS
 
 
 cdef void _init():
-    global _TYPES, _TYPES_R
+    global _TYPES, _TYPES_R, _FACETS
     _TYPES = [Object] * CowlObjectType.COWL_OT_COUNT
     _TYPES[CowlObjectType.COWL_OT_VECTOR] = Collection
     _TYPES[CowlObjectType.COWL_OT_IRI] = IRI
     _TYPES[CowlObjectType.COWL_OT_LITERAL] = Literal
+    _TYPES[CowlObjectType.COWL_OT_FACET_RESTR] = FacetRestriction
     _TYPES[CowlObjectType.COWL_OT_ONTOLOGY] = Ontology
     _TYPES[CowlObjectType.COWL_OT_PREFIX_MAP] = PrefixMap
     _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
@@ -33,6 +36,11 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_A_SUB_CLASS] = SubClassOf
     _TYPES[CowlObjectType.COWL_OT_A_EQUIV_CLASSES] = EquivalentClasses
     _TYPES[CowlObjectType.COWL_OT_A_DISJ_CLASSES] = DisjointClasses
+    _TYPES[CowlObjectType.COWL_OT_A_DISJ_UNION] = DisjointUnion
+    _TYPES[CowlObjectType.COWL_OT_A_SUB_OBJ_PROP] = SubObjectPropertyOf
+    _TYPES[CowlObjectType.COWL_OT_A_EQUIV_OBJ_PROP] = EquivalentObjectProperties
+    _TYPES[CowlObjectType.COWL_OT_A_DISJ_OBJ_PROP] = DisjointObjectProperties
+    _TYPES[CowlObjectType.COWL_OT_A_INV_OBJ_PROP] = InverseObjectProperties
     _TYPES[CowlObjectType.COWL_OT_A_OBJ_PROP_DOMAIN] = ObjectPropertyDomain
     _TYPES[CowlObjectType.COWL_OT_A_OBJ_PROP_RANGE] = ObjectPropertyRange
     _TYPES[CowlObjectType.COWL_OT_A_FUNC_OBJ_PROP] = FunctionalObjectProperty
@@ -42,13 +50,25 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_A_SYMM_OBJ_PROP] = SymmetricObjectProperty
     _TYPES[CowlObjectType.COWL_OT_A_ASYMM_OBJ_PROP] = AsymmetricObjectProperty
     _TYPES[CowlObjectType.COWL_OT_A_TRANS_OBJ_PROP] = TransitiveObjectProperty
+    _TYPES[CowlObjectType.COWL_OT_A_SUB_DATA_PROP] = SubDataPropertyOf
+    _TYPES[CowlObjectType.COWL_OT_A_EQUIV_DATA_PROP] = EquivalentDataProperties
+    _TYPES[CowlObjectType.COWL_OT_A_DISJ_DATA_PROP] = DisjointDataProperties
     _TYPES[CowlObjectType.COWL_OT_A_DATA_PROP_DOMAIN] = DataPropertyDomain
     _TYPES[CowlObjectType.COWL_OT_A_DATA_PROP_RANGE] = DataPropertyRange
+    _TYPES[CowlObjectType.COWL_OT_A_FUNC_DATA_PROP] = FunctionalDataProperty
+    _TYPES[CowlObjectType.COWL_OT_A_DATATYPE_DEF] = DatatypeDefinition
+    _TYPES[CowlObjectType.COWL_OT_A_HAS_KEY] = HasKey
+    _TYPES[CowlObjectType.COWL_OT_A_SAME_IND] = SameIndividual
+    _TYPES[CowlObjectType.COWL_OT_A_DIFF_IND] = DifferentIndividuals
     _TYPES[CowlObjectType.COWL_OT_A_CLASS_ASSERT] = ClassAssertion
     _TYPES[CowlObjectType.COWL_OT_A_OBJ_PROP_ASSERT] = ObjectPropertyAssertion
     _TYPES[CowlObjectType.COWL_OT_A_NEG_OBJ_PROP_ASSERT] = NegativeObjectPropertyAssertion
     _TYPES[CowlObjectType.COWL_OT_A_DATA_PROP_ASSERT] = DataPropertyAssertion
     _TYPES[CowlObjectType.COWL_OT_A_NEG_DATA_PROP_ASSERT] = NegativeDataPropertyAssertion
+    _TYPES[CowlObjectType.COWL_OT_A_ANNOT_ASSERT] = AnnotationAssertion
+    _TYPES[CowlObjectType.COWL_OT_A_SUB_ANNOT_PROP] = SubAnnotationPropertyOf
+    _TYPES[CowlObjectType.COWL_OT_A_ANNOT_PROP_DOMAIN] = AnnotationPropertyDomain
+    _TYPES[CowlObjectType.COWL_OT_A_ANNOT_PROP_RANGE] = AnnotationPropertyRange
     _TYPES[CowlObjectType.COWL_OT_CE_CLASS] = Class
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_INTERSECT] = ObjectIntersectionOf
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_UNION] = ObjectUnionOf
@@ -56,11 +76,14 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_ONE_OF] = ObjectOneOf
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_SOME] = ObjectSomeValuesFrom
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_ALL] = ObjectAllValuesFrom
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_HAS_VALUE] = ObjectHasValue
+    _TYPES[CowlObjectType.COWL_OT_CE_OBJ_HAS_SELF] = ObjectHasSelf
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_MIN_CARD] = ObjectMinCardinality
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_MAX_CARD] = ObjectMaxCardinality
     _TYPES[CowlObjectType.COWL_OT_CE_OBJ_EXACT_CARD] = ObjectExactCardinality
     _TYPES[CowlObjectType.COWL_OT_CE_DATA_SOME] = DataSomeValuesFrom
     _TYPES[CowlObjectType.COWL_OT_CE_DATA_ALL] = DataAllValuesFrom
+    _TYPES[CowlObjectType.COWL_OT_CE_DATA_HAS_VALUE] = DataHasValue
     _TYPES[CowlObjectType.COWL_OT_CE_DATA_MIN_CARD] = DataMinCardinality
     _TYPES[CowlObjectType.COWL_OT_CE_DATA_MAX_CARD] = DataMaxCardinality
     _TYPES[CowlObjectType.COWL_OT_CE_DATA_EXACT_CARD] = DataExactCardinality
@@ -69,12 +92,44 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_DR_DATA_UNION] = DataUnionOf
     _TYPES[CowlObjectType.COWL_OT_DR_DATA_COMPL] = DataComplementOf
     _TYPES[CowlObjectType.COWL_OT_DR_DATA_ONE_OF] = DataOneOf
+    _TYPES[CowlObjectType.COWL_OT_DR_DATATYPE_RESTR] = DatatypeRestriction
     _TYPES[CowlObjectType.COWL_OT_OPE_OBJ_PROP] = ObjectProperty
     _TYPES[CowlObjectType.COWL_OT_OPE_INV_OBJ_PROP] = InverseObjectProperty
     _TYPES[CowlObjectType.COWL_OT_DPE_DATA_PROP] = DataProperty
     _TYPES[CowlObjectType.COWL_OT_I_NAMED] = NamedIndividual
     _TYPES[CowlObjectType.COWL_OT_I_ANONYMOUS] = AnonymousIndividual
     _TYPES_R = {t: i for i, t in enumerate(_TYPES)}
+    _FACETS = {
+        "length": (XSD.LENGTH, XSD.NON_NEGATIVE_INTEGER),
+        "min_length": (XSD.MIN_LENGTH, XSD.NON_NEGATIVE_INTEGER),
+        "max_length": (XSD.MAX_LENGTH, XSD.NON_NEGATIVE_INTEGER),
+        "min_exclusive": (XSD.MIN_EXCLUSIVE, None),
+        "min_inclusive": (XSD.MIN_INCLUSIVE, None),
+        "max_exclusive": (XSD.MAX_EXCLUSIVE, None),
+        "max_inclusive": (XSD.MAX_INCLUSIVE, None),
+        "pattern": (XSD.PATTERN, XSD.STRING),
+        "lang_range": (RDF.LANG_RANGE, XSD.STRING),
+    }
+
+
+cdef inline _py_type(CowlObjectType t):
+    return _TYPES[<int>t]
+
+
+cdef inline _py_ptr_type(void *ptr):
+    return _py_type(cowl_get_type(ptr))
+
+
+cdef inline CowlObjectType _cowl_type(t):
+    return <CowlObjectType>_TYPES_R[t]
+
+
+cdef inline CowlAxiomType _cowl_axiom_type(t):
+    return <CowlAxiomType>(_cowl_type(t) - CowlObjectType.COWL_OT_FIRST_A)
+
+
+cdef inline CowlCharAxiomType _cowl_char_axiom_type(t):
+    return <CowlCharAxiomType>(_cowl_type(t) - CowlObjectType.COWL_OT_A_FUNC_OBJ_PROP)
 
 
 # C helpers
@@ -138,6 +193,10 @@ cdef str cowl_string_to_py(CowlString *s):
 cdef CowlVector *cowl_vector_from_py_raw(items: Iterable[Object] | None):
     if items is None:
         return NULL
+
+    if isinstance(items, Collection):
+        return <CowlVector *>cowl_retain((<Collection>items).ptr)
+
     cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
     cdef CowlObject *ptr
     for item in items:
@@ -194,7 +253,47 @@ cdef inline CowlAxiomFilter cowl_axiom_filter_from_py(
 def one_of(*args: Individual | Literal | LiteralValue) -> ObjectOneOf | DataOneOf:
     if isinstance(args[0], Individual):
         return ObjectOneOf(*args)
-    return DataOneOf(*(v if isinstance(v, Literal) else Literal(v) for v in args))
+    return DataOneOf(*(_as_literal(v) for v in args))
+
+
+def all_equivalent(
+    *args: ClassExpression | ObjectPropertyExpression | DataProperty,
+) -> EquivalentClasses | EquivalentObjectProperties | EquivalentDataProperties:
+    if isinstance(args[0], ClassExpression):
+        return EquivalentClasses(*args)
+    if isinstance(args[0], ObjectPropertyExpression):
+        return EquivalentObjectProperties(*args)
+    return EquivalentDataProperties(*args)
+
+
+def all_disjoint(
+    *args: ClassExpression | ObjectPropertyExpression | DataProperty,
+) -> DisjointClasses | DisjointObjectProperties | DisjointDataProperties:
+    if isinstance(args[0], ClassExpression):
+        return DisjointClasses(*args)
+    if isinstance(args[0], ObjectPropertyExpression):
+        return DisjointObjectProperties(*args)
+    return DisjointDataProperties(*args)
+
+
+def all_same(*args: Individual) -> SameIndividual:
+    return SameIndividual(*args)
+
+
+def all_different(*args: Individual) -> DifferentIndividuals:
+    return DifferentIndividuals(*args)
+
+
+def chain(*args: ObjectPropertyExpression) -> ObjectPropertyChain:
+    return ObjectPropertyChain(*args)
+
+
+cdef inline Literal _as_literal(val: Literal | LiteralValue, dt: Datatype | None = None):
+    return val if isinstance(val, Literal) else Literal(val, dt)
+
+
+cdef inline IRI _as_iri(val: IRI | str):
+    return val if isinstance(val, IRI) else IRI(val)
 
 
 # Enums
@@ -213,35 +312,26 @@ class Position(IntFlag):
 # Base types
 
 
-cdef inline _py_type(CowlObjectType t):
-    return _TYPES[<int>t]
-
-
-cdef inline CowlObjectType _cowl_type(t):
-    return <CowlObjectType>_TYPES_R[t]
-
-
-cdef inline CowlAxiomType _cowl_axiom_type(t):
-    return <CowlAxiomType>(_cowl_type(t) - CowlObjectType.COWL_OT_FIRST_A)
-
-
-cdef inline CowlCharAxiomType _cowl_char_axiom_type(t):
-    return <CowlCharAxiomType>(_cowl_type(t) - CowlObjectType.COWL_OT_A_FUNC_OBJ_PROP)
-
-
 cdef class Object:
     cdef void *ptr
 
     @staticmethod
-    cdef Object wrap(void *ptr):
-        ptype = _py_type(cowl_get_type(ptr))
+    cdef Object wrap_as(ptype: type[Object], void *ptr):
         cdef Object obj = ptype.__new__(ptype)
         obj.ptr = ptr
         return obj
 
     @staticmethod
+    cdef Object retain_as(ptype: type[Object], void *ptr):
+        return Object.wrap_as(ptype, cowl_retain(ptr))
+
+    @staticmethod
+    cdef Object wrap(void *ptr):
+        return Object.wrap_as(_py_ptr_type(ptr), ptr)
+
+    @staticmethod
     cdef Object retain(void *ptr):
-        return Object.wrap(cowl_retain(ptr))
+        return Object.wrap_as(_py_ptr_type(ptr), cowl_retain(ptr))
 
     def __cinit__(self):
         self.ptr = NULL
@@ -361,8 +451,20 @@ class Entity(Primitive, HasIRI):
 
 cdef class AnnotationProperty(Object, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_annot_prop(<CowlIRI *>iri_obj.ptr)
+
+    def __call__(self, subject: AnnotationSubject, value: AnnotationValue) -> AnnotationAssertion:
+        return AnnotationAssertion(self, subject, value)
+
+    def is_subproperty_of(self, parent: AnnotationProperty) -> SubAnnotationPropertyOf:
+        return SubAnnotationPropertyOf(self, parent)
+
+    def has_domain(self, domain: IRI) -> AnnotationPropertyDomain:
+        return AnnotationPropertyDomain(self, domain)
+
+    def has_range(self, range_: IRI) -> AnnotationPropertyRange:
+        return AnnotationPropertyRange(self, range_)
 
 
 cdef class Annotation(Object, Annotated, HasPrimitives):
@@ -406,6 +508,9 @@ cdef class IRI(Object, Primitive, HasIRI):
 
     def __init__(self, prefix: str, suffix: str | None = None) -> None:
         self.ptr = _iri_from_prefix_suffix(prefix, suffix) if suffix else _iri_from_str(prefix)
+
+    def __call__(self, value: Literal | LiteralValue, dt: Datatype | None = None) -> FacetRestriction:
+        return FacetRestriction(self, _as_literal(value, dt))
 
     def as_string(self) -> str:
         cdef UString iri_str = cowl_iri_to_ustring(<CowlIRI *>self.ptr)
@@ -453,8 +558,8 @@ def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | N
     if isinstance(val, str):
         return val, dt
     if isinstance(val, bool):
-        return "true" if val else "false", dt or XSD.BOOLEAN
-    if not dt:
+        return "true" if val else "false", XSD.BOOLEAN if dt is None else dt
+    if dt is None:
         if isinstance(val, int):
             dt = XSD.INTEGER
         elif isinstance(val, float):
@@ -466,6 +571,9 @@ def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | N
 
 
 cdef class ClassExpression(Object, HasPrimitives):
+    def __call__(self, arg: ClassExpression | Individual) -> SubClassOf | ClassAssertion:
+        return ClassAssertion(self, arg) if isinstance(arg, Individual) else SubClassOf(self, arg)
+
     def __and__(self, other: ClassExpression) -> ObjectIntersectionOf:
         return ObjectIntersectionOf(
             *self._as_ops(ObjectIntersectionOf),
@@ -486,11 +594,20 @@ cdef class ClassExpression(Object, HasPrimitives):
             return self.operands()
         return (self,)
 
-    def is_a(self, other: ClassExpression) -> SubClassOf:
-        return SubClassOf(self, other)
+    def that(self, *args: ClassExpression) -> ObjectIntersectionOf:
+        return ObjectIntersectionOf(
+            *self._as_ops(ObjectIntersectionOf),
+            *(op for arg in args for op in arg._as_ops(ObjectIntersectionOf))
+        )
 
-    def is_subclass_of(self, other: ClassExpression) -> SubClassOf:
-        return SubClassOf(self, other)
+    def is_a(self, parent: ClassExpression) -> SubClassOf:
+        return SubClassOf(self, parent)
+
+    def is_not_a(self, other: ClassExpression) -> DisjointClasses:
+        return DisjointClasses(self, other)
+
+    def is_subclass_of(self, parent: ClassExpression) -> SubClassOf:
+        return SubClassOf(self, parent)
 
     def is_equivalent_to(self, *others: ClassExpression) -> EquivalentClasses:
         return EquivalentClasses(self, *others)
@@ -498,36 +615,40 @@ cdef class ClassExpression(Object, HasPrimitives):
     def is_disjoint_with(self, *others: ClassExpression) -> DisjointClasses:
         return DisjointClasses(self, *others)
 
-    def that(self, *args: ClassExpression) -> ObjectIntersectionOf:
-        return ObjectIntersectionOf(
-            *self._as_ops(ObjectIntersectionOf),
-            *(op for arg in args for op in arg._as_ops(ObjectIntersectionOf))
-        )
+    def has_key(self, *properties: ObjectPropertyExpression | DataProperty) -> HasKey:
+        obj_props = (p for p in properties if isinstance(p, ObjectPropertyExpression))
+        data_props = (p for p in properties if isinstance(p, DataProperty))
+        return HasKey(self, obj_props, data_props)
 
 
 cdef class Class(ClassExpression, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_class(<CowlIRI *>iri_obj.ptr)
 
+    def is_disjoint_union_of(self, *disjoints: ClassExpression) -> DisjointUnion:
+        return DisjointUnion(self, *disjoints)
 
-cdef class NAryBooleanClassExpression(ClassExpression):
+
+cdef class NAryClassExpression(ClassExpression):
+    def __init__(self, *args: ClassExpression) -> None:
+        cdef CowlNAryType ctype = (
+            CowlNAryType.COWL_NT_INTERSECT if type(self) is ObjectIntersectionOf
+            else CowlNAryType.COWL_NT_UNION
+        )
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_bool(ctype, <CowlVector *>vec.p)
+
     def operands(self) -> Collection:
         return Object.retain(cowl_nary_bool_get_operands(<CowlNAryBool *>self.ptr))
 
 
-cdef class ObjectIntersectionOf(NAryBooleanClassExpression):
-
-    def __init__(self, *args: ClassExpression) -> None:
-        cdef Ptr vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_INTERSECT, <CowlVector *>vec.p)
+cdef class ObjectIntersectionOf(NAryClassExpression):
+    pass
 
 
-cdef class ObjectUnionOf(NAryBooleanClassExpression):
-
-    def __init__(self, *args: ClassExpression) -> None:
-        cdef Ptr vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_bool(CowlNAryType.COWL_NT_UNION, <CowlVector *>vec.p)
+cdef class ObjectUnionOf(NAryClassExpression):
+    pass
 
 
 cdef class ObjectComplementOf(ClassExpression):
@@ -538,7 +659,23 @@ cdef class ObjectComplementOf(ClassExpression):
         return Object.retain(cowl_obj_compl_get_operand(<CowlObjCompl *>self.ptr))
 
 
+cdef class ObjectOneOf(ClassExpression):
+    def __init__(self, *inds: Individual) -> None:
+        cdef Ptr vec = cowl_vector_from_py(inds)
+        self.ptr = cowl_obj_one_of(<CowlVector *>vec.p)
+
+    def individuals(self) -> Collection[Individual]:
+        return Object.retain(cowl_obj_one_of_get_inds(<CowlObjOneOf *>self.ptr))
+
+
 cdef class ObjectQuantifiedRestriction(ClassExpression):
+    def __init__(self, prop: ObjectPropertyExpression, filler: ClassExpression) -> None:
+        cdef CowlQuantType ctype = (
+            CowlQuantType.COWL_QT_SOME if type(self) is ObjectSomeValuesFrom
+            else CowlQuantType.COWL_QT_ALL
+        )
+        self.ptr = cowl_obj_quant(ctype, (<Object>prop).ptr, (<Object>filler).ptr)
+
     def prop(self) -> ObjectPropertyExpression:
         return Object.retain(cowl_obj_quant_get_prop(<CowlObjQuant *>self.ptr))
 
@@ -547,18 +684,51 @@ cdef class ObjectQuantifiedRestriction(ClassExpression):
 
 
 cdef class ObjectSomeValuesFrom(ObjectQuantifiedRestriction):
-    def __init__(self, prop: ObjectPropertyExpression, filler: ClassExpression) -> None:
-        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_SOME
-        self.ptr = cowl_obj_quant(qtype, (<Object>prop).ptr, (<Object>filler).ptr)
+    pass
 
 
 cdef class ObjectAllValuesFrom(ObjectQuantifiedRestriction):
-    def __init__(self, prop: ObjectPropertyExpression, filler: ClassExpression) -> None:
-        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_ALL
-        self.ptr = cowl_obj_quant(qtype, (<Object>prop).ptr, (<Object>filler).ptr)
+    pass
+
+
+cdef class ObjectHasSelf(ClassExpression):
+    def __init__(self, prop: ObjectPropertyExpression) -> None:
+        self.ptr = cowl_obj_has_self(prop.ptr)
+
+    def prop(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_obj_has_self_get_prop(<CowlObjHasSelf *>self.ptr))
+
+
+cdef class ObjectHasValue(ClassExpression):
+    def __init__(
+        self,
+        prop: ObjectPropertyExpression,
+        value: Individual,
+    ) -> None:
+        self.ptr = cowl_obj_has_value(prop.ptr, value.ptr)
+
+    def prop(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_obj_has_value_get_prop(<CowlObjHasValue *>self.ptr))
+
+    def value(self) -> Individual:
+        return Object.retain(cowl_obj_has_value_get_ind(<CowlObjHasValue *>self.ptr))
 
 
 cdef class ObjectCardinalityRestriction(ClassExpression):
+    def __init__(
+        self,
+        prop: ObjectPropertyExpression,
+        cardinality: int,
+        filler: ClassExpression | None = None
+    ) -> None:
+        cdef CowlCardType ctype = (
+            CowlCardType.COWL_CT_MIN if type(self) is ObjectMinCardinality else
+            CowlCardType.COWL_CT_MAX if type(self) is ObjectMaxCardinality else
+            CowlCardType.COWL_CT_EXACT
+        )
+        cdef void *filler_ptr = (<Object>filler).ptr if filler else NULL
+        self.ptr = cowl_obj_card(ctype, (<Object>prop).ptr, filler_ptr, cardinality)
+
     def prop(self) -> ObjectPropertyExpression:
         return Object.retain(cowl_obj_card_get_prop(<CowlObjCard *>self.ptr))
 
@@ -571,51 +741,29 @@ cdef class ObjectCardinalityRestriction(ClassExpression):
 
 
 cdef class ObjectMinCardinality(ObjectCardinalityRestriction):
-    def __init__(
-        self,
-        prop: ObjectPropertyExpression,
-        cardinality: int,
-        filler: ClassExpression | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_MIN
-        cdef void *filler_ptr = (<Object>filler).ptr if filler else NULL
-        self.ptr = cowl_obj_card(ctype, (<Object>prop).ptr, filler_ptr, cardinality)
+    pass
 
 
 cdef class ObjectMaxCardinality(ObjectCardinalityRestriction):
-    def __init__(
-        self,
-        prop: ObjectPropertyExpression,
-        cardinality: int,
-        filler: ClassExpression | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_MAX
-        cdef void *filler_ptr = (<Object>filler).ptr if filler else NULL
-        self.ptr = cowl_obj_card(ctype, (<Object>prop).ptr, filler_ptr, cardinality)
+    pass
 
 
 cdef class ObjectExactCardinality(ObjectCardinalityRestriction):
-    def __init__(
-        self,
-        prop: ObjectPropertyExpression,
-        cardinality: int,
-        filler: ClassExpression | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_EXACT
-        cdef void *filler_ptr = (<Object>filler).ptr if filler else NULL
-        self.ptr = cowl_obj_card(ctype, (<Object>prop).ptr, filler_ptr, cardinality)
-
-
-cdef class ObjectOneOf(ClassExpression):
-    def __init__(self, *inds: Individual) -> None:
-        cdef Ptr vec = cowl_vector_from_py(inds)
-        self.ptr = cowl_obj_one_of(<CowlVector *>vec.p)
-
-    def individuals(self) -> Collection[Individual]:
-        return Object.retain(cowl_obj_one_of_get_inds(<CowlObjOneOf *>self.ptr))
+    pass
 
 
 cdef class DataQuantifiedRestriction(ClassExpression):
+    def __init__(
+        self,
+        prop: DataProperty,
+        data_range: DataRange
+    ) -> None:
+        cdef CowlQuantType ctype = (
+            CowlQuantType.COWL_QT_SOME if type(self) is DataSomeValuesFrom else
+            CowlQuantType.COWL_QT_ALL
+        )
+        self.ptr = cowl_data_quant(ctype, prop.ptr, data_range.ptr)
+
     def prop(self) -> DataProperty:
         return Object.retain(cowl_data_quant_get_prop(<CowlDataQuant *>self.ptr))
 
@@ -623,27 +771,44 @@ cdef class DataQuantifiedRestriction(ClassExpression):
         return Object.retain(cowl_data_quant_get_range(<CowlDataQuant *>self.ptr))
 
 
-cdef class DataSomeValuesFrom(ClassExpression):
+cdef class DataSomeValuesFrom(DataQuantifiedRestriction):
+    pass
+
+
+cdef class DataAllValuesFrom(DataQuantifiedRestriction):
+    pass
+
+
+cdef class DataHasValue(ClassExpression):
     def __init__(
         self,
         prop: DataProperty,
-        data_range: DataRange
+        value: Literal,
     ) -> None:
-        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_SOME
-        self.ptr = cowl_data_quant(qtype, prop.ptr, data_range.ptr)
+        self.ptr = cowl_data_has_value(prop.ptr, <CowlLiteral *>value.ptr)
 
+    def prop(self) -> DataProperty:
+        return Object.retain(cowl_data_has_value_get_prop(<CowlDataHasValue *>self.ptr))
 
-cdef class DataAllValuesFrom(ClassExpression):
-    def __init__(
-        self,
-        prop: DataProperty,
-        data_range: DataRange
-    ) -> None:
-        cdef CowlQuantType qtype = CowlQuantType.COWL_QT_ALL
-        self.ptr = cowl_data_quant(qtype, prop.ptr, data_range.ptr)
+    def value(self) -> Literal:
+        return Object.retain(cowl_data_has_value_get_value(<CowlDataHasValue *>self.ptr))
 
 
 cdef class DataCardinalityRestriction(ClassExpression):
+    def __init__(
+        self,
+        prop: DataProperty,
+        cardinality: int,
+        data_range: DataRange | None = None
+    ) -> None:
+        cdef CowlCardType ctype = (
+            CowlCardType.COWL_CT_MIN if type(self) is DataMinCardinality else
+            CowlCardType.COWL_CT_MAX if type(self) is DataMaxCardinality else
+            CowlCardType.COWL_CT_EXACT
+        )
+        cdef void *range_ptr = data_range.ptr if data_range else NULL
+        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
+
     def prop(self) -> DataProperty:
         return Object.retain(cowl_data_card_get_prop(<CowlDataCard *>self.ptr))
 
@@ -656,39 +821,15 @@ cdef class DataCardinalityRestriction(ClassExpression):
 
 
 cdef class DataMinCardinality(DataCardinalityRestriction):
-    def __init__(
-        self,
-        prop: DataProperty,
-        cardinality: int,
-        data_range: DataRange | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_MIN
-        cdef void *range_ptr = data_range.ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
+    pass
 
 
 cdef class DataMaxCardinality(DataCardinalityRestriction):
-    def __init__(
-        self,
-        prop: DataProperty,
-        cardinality: int,
-        data_range: DataRange | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_MAX
-        cdef void *range_ptr = data_range.ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
+    pass
 
 
 cdef class DataExactCardinality(DataCardinalityRestriction):
-    def __init__(
-        self,
-        prop: DataProperty,
-        cardinality: int,
-        data_range: DataRange | None = None
-    ) -> None:
-        cdef CowlCardType ctype = CowlCardType.COWL_CT_EXACT
-        cdef void *range_ptr = data_range.ptr if data_range else NULL
-        self.ptr = cowl_data_card(ctype, prop.ptr, range_ptr, cardinality)
+    pass
 
 
 # Data ranges
@@ -701,25 +842,48 @@ cdef class DataRange(Object, HasPrimitives):
 
 cdef class Datatype(DataRange, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_datatype(<CowlIRI *>iri_obj.ptr)
+
+    def __call__(self, value: LiteralValue) -> Literal:
+        return Literal(value, self)
+
+    def __getitem__(self, item: FacetRestriction) -> DatatypeRestriction:
+        return DatatypeRestriction(self, item)
+
+    def is_defined_as(self, data_range: DataRange) -> DatatypeDefinition:
+        return DatatypeDefinition(self, data_range)
+
+    def restricted_by(
+        self,
+        *restrictions: FacetRestriction,
+        **kw: Literal | LiteralValue | None,
+    ) -> DatatypeRestriction:
+        return DatatypeRestriction(self, *restrictions, *(
+            f[0](v, f[1] or self) for k, v in kw.items()
+            if v is not None and (f := _FACETS.get(k))
+        ))
 
 
 cdef class NAryDataRange(DataRange):
+    def __init__(self, *args: DataRange) -> None:
+        cdef CowlNAryType ctype = (
+            CowlNAryType.COWL_NT_INTERSECT if type(self) is DataIntersectionOf
+            else CowlNAryType.COWL_NT_UNION
+        )
+        cdef Ptr vec = cowl_vector_from_py(args)
+        self.ptr = cowl_nary_data(ctype, <CowlVector *>vec.p)
+
     def operands(self) -> Collection[DataRange]:
         return Object.retain(cowl_nary_data_get_operands(<CowlNAryData *>self.ptr))
 
 
 cdef class DataIntersectionOf(NAryDataRange):
-    def __init__(self, *args: DataRange) -> None:
-        cdef Ptr vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_INTERSECT, <CowlVector *>vec.p)
+    pass
 
 
 cdef class DataUnionOf(NAryDataRange):
-    def __init__(self, *args: DataRange) -> None:
-        cdef Ptr vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_data(CowlNAryType.COWL_NT_UNION, <CowlVector *>vec.p)
+    pass
 
 
 cdef class DataComplementOf(DataRange):
@@ -739,17 +903,59 @@ cdef class DataOneOf(DataRange):
         return Object.retain(cowl_data_one_of_get_values(<CowlDataOneOf *>self.ptr))
 
 
+cdef class FacetRestriction(Object):
+    def __init__(
+        self,
+        facet: IRI,
+        value: Literal,
+    ) -> None:
+        self.ptr = cowl_facet_restr(<CowlIRI *>facet.ptr, <CowlLiteral *>value.ptr)
+
+    def facet(self) -> IRI:
+        return Object.retain(cowl_facet_restr_get_facet(<CowlFacetRestr *>self.ptr))
+
+    def value(self) -> Literal:
+        return Object.retain(cowl_facet_restr_get_value(<CowlFacetRestr *>self.ptr))
+
+
+cdef class DatatypeRestriction(DataRange):
+    def __init__(
+        self,
+        datatype: Datatype,
+        *restrictions: FacetRestriction,
+    ) -> None:
+        cdef Ptr vec = cowl_vector_from_py(restrictions)
+        self.ptr = cowl_datatype_restr(<CowlDatatype *>datatype.ptr, <CowlVector *>vec.p)
+
+    def __getitem__(self, item: FacetRestriction) -> DatatypeRestriction:
+        return DatatypeRestriction(self.datatype(), *self.restrictions(), item)
+
+    def datatype(self) -> Datatype:
+        return Object.retain(cowl_datatype_restr_get_datatype(<CowlDatatypeRestr *>self.ptr))
+
+    def restrictions(self) -> Collection[FacetRestriction]:
+        return Object.retain(cowl_datatype_restr_get_restrictions(<CowlDatatypeRestr *>self.ptr))
+
+
 # Individuals
 
 
 cdef class Individual(Object, Primitive):
+    cdef dict __dict__
+
     def is_a(self, cls: ClassExpression) -> ClassAssertion:
         return ClassAssertion(cls, self)
+
+    def is_same_as(self, *others: Individual) -> SameIndividual:
+        return SameIndividual(self, *others)
+
+    def is_different_from(self, *others: Individual) -> DifferentIndividuals:
+        return DifferentIndividuals(self, *others)
 
 
 cdef class NamedIndividual(Individual, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_named_ind(<CowlIRI *>iri_obj.ptr)
 
 
@@ -763,11 +969,20 @@ cdef class AnonymousIndividual(Individual):
 
 
 cdef class ObjectPropertyExpression(Object, HasPrimitives):
+    def __call__(self, subj: Individual, obj: Individual) -> ObjectPropertyAssertion:
+        return ObjectPropertyAssertion(self, subj, obj)
+
     def some(self, filler: ClassExpression) -> ObjectSomeValuesFrom:
         return ObjectSomeValuesFrom(self, filler)
 
-    def all(self, filler: ClassExpression) -> ObjectAllValuesFrom:
+    def only(self, filler: ClassExpression) -> ObjectAllValuesFrom:
         return ObjectAllValuesFrom(self, filler)
+
+    def has_value(self, value: Individual) -> ObjectHasValue:
+        return ObjectHasValue(self, value)
+
+    def has_self(self) -> ObjectHasSelf:
+        return ObjectHasSelf(self)
 
     def min(self, cardinality: int, filler: ClassExpression | None = None) -> ObjectMinCardinality:
         return ObjectMinCardinality(self, cardinality, filler)
@@ -777,6 +992,18 @@ cdef class ObjectPropertyExpression(Object, HasPrimitives):
 
     def exactly(self, cardinality: int, filler: ClassExpression | None = None) -> ObjectExactCardinality:
         return ObjectExactCardinality(self, cardinality, filler)
+
+    def is_subproperty_of(self, parent: ObjectPropertyExpression) -> SubObjectPropertyOf:
+        return SubObjectPropertyOf(self, parent)
+
+    def is_equivalent_to(self, *others: ObjectPropertyExpression) -> EquivalentObjectProperties:
+        return EquivalentObjectProperties(self, *others)
+
+    def is_disjoint_with(self, *others: ObjectPropertyExpression) -> DisjointObjectProperties:
+        return DisjointObjectProperties(self, *others)
+
+    def is_inverse_of(self, other: ObjectPropertyExpression) -> InverseObjectProperties:
+        return InverseObjectProperties(self, other)
 
     def has_domain(self, domain: ClassExpression) -> ObjectPropertyDomain:
         return ObjectPropertyDomain(self, domain)
@@ -805,22 +1032,30 @@ cdef class ObjectPropertyExpression(Object, HasPrimitives):
     def is_transitive(self) -> TransitiveObjectProperty:
         return TransitiveObjectProperty(self)
 
-    def __call__(self, subj: Individual, obj: Individual) -> ObjectPropertyAssertion:
-        return ObjectPropertyAssertion(self, subj, obj)
-
 
 cdef class ObjectProperty(ObjectPropertyExpression, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_obj_prop(<CowlIRI *>iri_obj.ptr)
+
+    def __invert__(self) -> InverseObjectProperty:
+        return InverseObjectProperty(self)
 
 
 cdef class InverseObjectProperty(ObjectPropertyExpression):
     def __init__(self, prop: ObjectProperty) -> None:
         self.ptr = cowl_inv_obj_prop(<CowlObjProp *>prop.ptr)
 
+    def __invert__(self) -> ObjectProperty:
+        return self.prop()
+
     def prop(self) -> ObjectProperty:
         return Object.retain(cowl_inv_obj_prop_get_prop(<CowlInvObjProp *>self.ptr))
+
+
+cdef class ObjectPropertyChain(Collection):
+    def is_subproperty_of(self, parent: ObjectPropertyExpression) -> SubObjectPropertyOf:
+        return SubObjectPropertyOf(self, parent)
 
 
 # Data property expressions
@@ -828,18 +1063,20 @@ cdef class InverseObjectProperty(ObjectPropertyExpression):
 
 cdef class DataProperty(Object, Entity):
     def __init__(self, iri: str | IRI) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_data_prop(<CowlIRI *>iri_obj.ptr)
 
     def __call__(self, subj: Individual, value: Literal | LiteralValue) -> DataPropertyAssertion:
-        literal = value if isinstance(value, Literal) else Literal(value)
-        return DataPropertyAssertion(self, subj, literal)
+        return DataPropertyAssertion(self, subj, _as_literal(value))
 
     def some(self, data_range: DataRange) -> DataSomeValuesFrom:
         return DataSomeValuesFrom(self, data_range)
 
-    def all(self, data_range: DataRange) -> DataAllValuesFrom:
+    def only(self, data_range: DataRange) -> DataAllValuesFrom:
         return DataAllValuesFrom(self, data_range)
+
+    def has_value(self, value: Literal | LiteralValue) -> DataHasValue:
+        return DataHasValue(self, _as_literal(value))
 
     def min(self, cardinality: int, data_range: DataRange | None = None) -> DataMinCardinality:
         return DataMinCardinality(self, cardinality, data_range)
@@ -849,6 +1086,15 @@ cdef class DataProperty(Object, Entity):
 
     def exactly(self, cardinality: int, data_range: DataRange | None = None) -> DataExactCardinality:
         return DataExactCardinality(self, cardinality, data_range)
+
+    def is_subproperty_of(self, parent: DataProperty) -> SubDataPropertyOf:
+        return SubDataPropertyOf(self, parent)
+
+    def is_equivalent_to(self, *others: DataProperty) -> EquivalentDataProperties:
+        return EquivalentDataProperties(self, *others)
+
+    def is_disjoint_with(self, *others: DataProperty) -> DisjointDataProperties:
+        return DisjointDataProperties(self, *others)
 
     def has_domain(self, domain: ClassExpression) -> DataPropertyDomain:
         return DataPropertyDomain(self, domain)
@@ -881,57 +1127,135 @@ cdef class Declaration(Axiom):
 
 
 cdef class SubClassOf(Axiom):
-
     def __init__(
         self,
-        sub_class: ClassExpression,
-        super_class: ClassExpression,
+        child: ClassExpression,
+        parent: ClassExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
         cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_sub_cls_axiom(sub_class.ptr, super_class.ptr, <CowlVector *>annot.p)
+        self.ptr = cowl_sub_cls_axiom(child.ptr, parent.ptr, <CowlVector *>annot.p)
 
-    def sub_class(self) -> ClassExpression:
+    def child(self) -> ClassExpression:
         return Object.retain(cowl_sub_cls_axiom_get_sub(<CowlSubClsAxiom *>self.ptr))
 
-    def super_class(self) -> ClassExpression:
+    def parent(self) -> ClassExpression:
         return Object.retain(cowl_sub_cls_axiom_get_super(<CowlSubClsAxiom *>self.ptr))
 
 
-cdef class NAryClassAxiom(Axiom):
+cdef class _NAryClassAxiom(Axiom):
+    def __init__(
+        self,
+        *args: ClassExpression,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef CowlNAryAxiomType ctype = (
+             CowlNAryAxiomType.COWL_NAT_EQUIV if type(self) is EquivalentClasses
+             else CowlNAryAxiomType.COWL_NAT_DISJ
+        )
+        cdef Ptr vec = cowl_vector_from_py(args)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_cls_axiom(ctype, <CowlVector *>vec.p, <CowlVector *>annot.p)
+
     def classes(self) -> Collection[ClassExpression]:
         return Object.retain(cowl_nary_cls_axiom_get_classes(<CowlNAryClsAxiom *>self.ptr))
 
 
-cdef class EquivalentClasses(NAryClassAxiom):
-    def __init__(
-        self,
-        *classes: ClassExpression,
-        annotations: Iterable[Annotation] | None = None,
-    ) -> None:
-        cdef Ptr vec = cowl_vector_from_py(classes)
-        cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_nary_cls_axiom(CowlNAryAxiomType.COWL_NAT_EQUIV,
-                                       <CowlVector *>vec.p, <CowlVector *>annot.p)
-
-
-cdef class DisjointClasses(NAryClassAxiom):
-    def __init__(
-        self,
-        *classes: ClassExpression,
-        annotations: Iterable[Annotation] | None = None,
-    ) -> None:
-        cdef Ptr vec = cowl_vector_from_py(classes)
-        cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_nary_cls_axiom(CowlNAryAxiomType.COWL_NAT_DISJ,
-                                       <CowlVector *>vec.p, <CowlVector *>annot.p)
-
-
-cdef class ObjectPropertyAxiom(Axiom):
+cdef class EquivalentClasses(_NAryClassAxiom):
     pass
 
 
-cdef class ObjectPropertyDomain(ObjectPropertyAxiom):
+cdef class DisjointClasses(_NAryClassAxiom):
+    pass
+
+
+cdef class DisjointUnion(Axiom):
+    def __init__(
+        self,
+        class_: Class,
+        *disjoints: ClassExpression,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr vec = cowl_vector_from_py(disjoints)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_disj_union_axiom(<CowlClass *>class_.ptr, <CowlVector *>vec.p, <CowlVector *>annot.p)
+
+    def class_(self) -> Class:
+        return Object.retain(cowl_disj_union_axiom_get_class(<CowlDisjUnionAxiom *>self.ptr))
+
+    def disjoints(self) -> Collection[ClassExpression]:
+        return Object.retain(cowl_disj_union_axiom_get_disjoints(<CowlDisjUnionAxiom *>self.ptr))
+
+
+cdef class SubObjectPropertyOf(Axiom):
+    def __init__(
+        self,
+        child: ObjectPropertyExpression | Iterable[ObjectPropertyExpression],
+        parent: ObjectPropertyExpression,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        cdef Ptr prop_vec
+        if isinstance(child, ObjectPropertyExpression):
+            self.ptr = cowl_sub_obj_prop_axiom((<ObjectPropertyExpression>child).ptr,
+                                               parent.ptr, <CowlVector *>annot.p)
+        else:
+            prop_vec = cowl_vector_from_py(child)
+            self.ptr = cowl_sub_obj_prop_axiom(<CowlVector *>prop_vec.p, parent.ptr,
+                                               <CowlVector *>annot.p)
+
+    def child(self) -> ObjectPropertyExpression | ObjectPropertyChain:
+        cdef void *p = cowl_sub_obj_prop_axiom_get_sub(<CowlSubObjPropAxiom *>self.ptr)
+        return Object.retain(p) if cowl_is_obj_prop_exp(p) else Object.retain_as(ObjectPropertyChain, p)
+
+    def parent(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_sub_obj_prop_axiom_get_super(<CowlSubObjPropAxiom *>self.ptr))
+
+
+cdef class _NaryObjectPropertyAxiom(Axiom):
+    def __init__(
+        self,
+        *args: ObjectPropertyExpression,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef CowlNAryAxiomType ctype = (
+             CowlNAryAxiomType.COWL_NAT_EQUIV if type(self) is EquivalentObjectProperties
+             else CowlNAryAxiomType.COWL_NAT_DISJ
+        )
+        cdef Ptr vec = cowl_vector_from_py(args)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_obj_prop_axiom(ctype, <CowlVector *>vec.p, <CowlVector *>annot.p)
+
+    def properties(self) -> Collection[ObjectPropertyExpression]:
+        return Object.retain(cowl_nary_obj_prop_axiom_get_props(<CowlNAryObjPropAxiom *>self.ptr))
+
+
+cdef class EquivalentObjectProperties(_NaryObjectPropertyAxiom):
+    pass
+
+
+cdef class DisjointObjectProperties(_NaryObjectPropertyAxiom):
+    pass
+
+
+cdef class InverseObjectProperties(Axiom):
+    def __init__(
+        self,
+        first: ObjectPropertyExpression,
+        second: ObjectPropertyExpression,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_inv_obj_prop_axiom(first.ptr, second.ptr, <CowlVector *>annot.p)
+
+    def first(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_inv_obj_prop_axiom_get_first_prop(<CowlInvObjPropAxiom *>self.ptr))
+
+    def second(self) -> ObjectPropertyExpression:
+        return Object.retain(cowl_inv_obj_prop_axiom_get_second_prop(<CowlInvObjPropAxiom *>self.ptr))
+
+
+cdef class ObjectPropertyDomain(Axiom):
     def __init__(
         self,
         prop: ObjectPropertyExpression,
@@ -948,7 +1272,7 @@ cdef class ObjectPropertyDomain(ObjectPropertyAxiom):
         return Object.retain(cowl_obj_prop_domain_axiom_get_domain(<CowlObjPropDomainAxiom *>self.ptr))
 
 
-cdef class ObjectPropertyRange(ObjectPropertyAxiom):
+cdef class ObjectPropertyRange(Axiom):
     def __init__(
         self,
         prop: ObjectPropertyExpression,
@@ -965,7 +1289,7 @@ cdef class ObjectPropertyRange(ObjectPropertyAxiom):
         return Object.retain(cowl_obj_prop_range_axiom_get_range(<CowlObjPropRangeAxiom *>self.ptr))
 
 
-cdef class ObjectPropertyCharacteristicAxiom(ObjectPropertyAxiom):
+cdef class _ObjectPropertyCharacteristic(Axiom):
     def __init__(
         self,
         prop: ObjectPropertyExpression,
@@ -979,39 +1303,78 @@ cdef class ObjectPropertyCharacteristicAxiom(ObjectPropertyAxiom):
         return Object.retain(cowl_obj_prop_char_axiom_get_prop(<CowlObjPropCharAxiom *>self.ptr))
 
 
-cdef class FunctionalObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class FunctionalObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class InverseFunctionalObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class InverseFunctionalObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class ReflexiveObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class ReflexiveObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class IrreflexiveObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class IrreflexiveObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class SymmetricObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class SymmetricObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class AsymmetricObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class AsymmetricObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class TransitiveObjectProperty(ObjectPropertyCharacteristicAxiom):
+cdef class TransitiveObjectProperty(_ObjectPropertyCharacteristic):
     pass
 
 
-cdef class DataPropertyAxiom(Axiom):
+cdef class SubDataPropertyOf(Axiom):
+    def __init__(
+        self,
+        child: DataProperty,
+        parent: DataProperty,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_sub_data_prop_axiom(child.ptr, parent.ptr, <CowlVector *>annot.p)
+
+    def child(self) -> DataProperty:
+        return Object.retain(cowl_sub_data_prop_axiom_get_sub(<CowlSubDataPropAxiom *>self.ptr))
+
+    def parent(self) -> DataProperty:
+        return Object.retain(cowl_sub_data_prop_axiom_get_super(<CowlSubDataPropAxiom *>self.ptr))
+
+
+cdef class _NAryDataPropertyAxiom(Axiom):
+    def __init__(
+        self,
+        *args: DataProperty,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef CowlNAryAxiomType ctype = (
+            CowlNAryAxiomType.COWL_NAT_EQUIV if type(self) is EquivalentDataProperties
+            else CowlNAryAxiomType.COWL_NAT_DISJ
+        )
+        cdef Ptr vec = cowl_vector_from_py(args)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_data_prop_axiom(ctype, <CowlVector *>vec.p, <CowlVector *>annot.p)
+
+    def properties(self) -> Collection[DataProperty]:
+        return Object.retain(cowl_nary_data_prop_axiom_get_props(<CowlNAryDataPropAxiom *>self.ptr))
+
+
+cdef class EquivalentDataProperties(_NAryDataPropertyAxiom):
     pass
 
 
-cdef class DataPropertyDomain(DataPropertyAxiom):
+cdef class DisjointDataProperties(_NAryDataPropertyAxiom):
+    pass
+
+
+cdef class DataPropertyDomain(Axiom):
     def __init__(
         self,
         prop: DataProperty,
@@ -1028,7 +1391,7 @@ cdef class DataPropertyDomain(DataPropertyAxiom):
         return Object.retain(cowl_data_prop_domain_axiom_get_domain(<CowlDataPropDomainAxiom *>self.ptr))
 
 
-cdef class DataPropertyRange(DataPropertyAxiom):
+cdef class DataPropertyRange(Axiom):
     def __init__(
         self,
         prop: DataProperty,
@@ -1045,7 +1408,7 @@ cdef class DataPropertyRange(DataPropertyAxiom):
         return Object.retain(cowl_data_prop_range_axiom_get_range(<CowlDataPropRangeAxiom *>self.ptr))
 
 
-cdef class FunctionalDataProperty(DataPropertyAxiom):
+cdef class FunctionalDataProperty(Axiom):
     def __init__(
         self,
         prop: DataProperty,
@@ -1056,6 +1419,74 @@ cdef class FunctionalDataProperty(DataPropertyAxiom):
 
     def property(self) -> DataProperty:
         return Object.retain(cowl_func_data_prop_axiom_get_prop(<CowlFuncDataPropAxiom *>self.ptr))
+
+
+cdef class DatatypeDefinition(Axiom):
+    def __init__(
+        self,
+        datatype: Datatype,
+        data_range: DataRange,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_datatype_def_axiom(<CowlDatatype *>datatype.ptr,
+                                           data_range.ptr, <CowlVector *>annot.p)
+
+    def datatype(self) -> Datatype:
+        return Object.retain(cowl_datatype_def_axiom_get_datatype(<CowlDatatypeDefAxiom *>self.ptr))
+
+    def data_range(self) -> DataRange:
+        return Object.retain(cowl_datatype_def_axiom_get_range(<CowlDatatypeDefAxiom *>self.ptr))
+
+
+cdef class HasKey(Axiom):
+    def __init__(
+        self,
+        class_: ClassExpression,
+        object_properties: Iterable[ObjectPropertyExpression],
+        data_properties: Iterable[DataProperty],
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr obj_vec = cowl_vector_from_py(object_properties)
+        cdef Ptr data_vec = cowl_vector_from_py(data_properties)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_has_key_axiom(class_.ptr, <CowlVector *>obj_vec.p,
+                                      <CowlVector *>data_vec.p, <CowlVector *>annot.p)
+
+    def class_(self) -> ClassExpression:
+        return Object.retain(cowl_has_key_axiom_get_cls_exp(<CowlHasKeyAxiom *>self.ptr))
+
+    def object_properties(self) -> Collection[ObjectPropertyExpression]:
+        return Object.retain(cowl_has_key_axiom_get_obj_props(<CowlHasKeyAxiom *>self.ptr))
+
+    def data_properties(self) -> Collection[DataProperty]:
+        return Object.retain(cowl_has_key_axiom_get_data_props(<CowlHasKeyAxiom *>self.ptr))
+
+
+cdef class _NAryIndividualAxiom(Axiom):
+    def __init__(
+        self,
+        *args: Individual,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef CowlNAryAxiomType ctype = (
+            CowlNAryAxiomType.COWL_NAT_SAME if type(self) is SameIndividual
+            else CowlNAryAxiomType.COWL_NAT_DIFF
+        )
+        cdef Ptr ind = cowl_vector_from_py(args)
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_nary_ind_axiom(ctype, <CowlVector *>ind.p, <CowlVector *>annot.p)
+
+    def individuals(self) -> Collection[Individual]:
+        return Object.retain(cowl_nary_ind_axiom_get_individuals(<CowlNAryIndAxiom *>self.ptr))
+
+
+cdef class SameIndividual(_NAryIndividualAxiom):
+    pass
+
+
+cdef class DifferentIndividuals(_NAryIndividualAxiom):
+    pass
 
 
 cdef class ClassAssertion(Axiom):
@@ -1075,25 +1506,7 @@ cdef class ClassAssertion(Axiom):
         return Object.retain(cowl_cls_assert_axiom_get_ind(<CowlClsAssertAxiom *>self.ptr))
 
 
-cdef class ObjectPropertyAssertion(Axiom):
-    def __init__(
-        self,
-        prop: ObjectPropertyExpression,
-        subject: Individual,
-        object: Individual,
-        annotations: Iterable[Annotation] | None = None,
-    ) -> None:
-        cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, <CowlVector *>annot.p)
-
-    def __invert__(self) -> ObjectPropertyAssertion:
-        return NegativeObjectPropertyAssertion(
-            self.prop(),
-            self.subject(),
-            self.object(),
-            self.annotations()
-        )
-
+cdef class _ObjectPropertyAssertion(Axiom):
     def prop(self) -> ObjectPropertyExpression:
         return Object.retain(cowl_obj_prop_assert_axiom_get_prop(<CowlObjPropAssertAxiom *>self.ptr))
 
@@ -1104,7 +1517,27 @@ cdef class ObjectPropertyAssertion(Axiom):
         return Object.retain(cowl_obj_prop_assert_axiom_get_object(<CowlObjPropAssertAxiom *>self.ptr))
 
 
-cdef class NegativeObjectPropertyAssertion(ObjectPropertyAssertion):
+cdef class ObjectPropertyAssertion(_ObjectPropertyAssertion):
+    def __init__(
+        self,
+        prop: ObjectPropertyExpression,
+        subject: Individual,
+        object: Individual,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_obj_prop_assert_axiom(prop.ptr, subject.ptr, object.ptr, <CowlVector *>annot.p)
+
+    def __invert__(self) -> NegativeObjectPropertyAssertion:
+        return NegativeObjectPropertyAssertion(
+            self.prop(),
+            self.subject(),
+            self.object(),
+            self.annotations()
+        )
+
+
+cdef class NegativeObjectPropertyAssertion(_ObjectPropertyAssertion):
     def __init__(
         self,
         prop: ObjectPropertyExpression,
@@ -1124,25 +1557,7 @@ cdef class NegativeObjectPropertyAssertion(ObjectPropertyAssertion):
         )
 
 
-cdef class DataPropertyAssertion(Axiom):
-    def __init__(
-        self,
-        prop: DataProperty,
-        subj: Individual,
-        value: Literal,
-        annotations: Iterable[Annotation] | None = None,
-    ) -> None:
-        cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
-
-    def __invert__(self) -> DataPropertyAssertion:
-        return NegativeDataPropertyAssertion(
-            self.prop(),
-            self.subject(),
-            self.value(),
-            self.annotations()
-        )
-
+cdef class _DataPropertyAssertion(Axiom):
     def prop(self) -> DataProperty:
         return Object.retain(cowl_data_prop_assert_axiom_get_prop(<CowlDataPropAssertAxiom *>self.ptr))
 
@@ -1153,7 +1568,7 @@ cdef class DataPropertyAssertion(Axiom):
         return Object.retain(cowl_data_prop_assert_axiom_get_object(<CowlDataPropAssertAxiom *>self.ptr))
 
 
-cdef class NegativeDataPropertyAssertion(DataPropertyAssertion):
+cdef class DataPropertyAssertion(_DataPropertyAssertion):
     def __init__(
         self,
         prop: DataProperty,
@@ -1162,7 +1577,28 @@ cdef class NegativeDataPropertyAssertion(DataPropertyAssertion):
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
         cdef Ptr annot = cowl_vector_from_py(annotations)
-        self.ptr = cowl_neg_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
+        self.ptr = cowl_data_prop_assert_axiom(prop.ptr, subj.ptr, <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
+
+    def __invert__(self) -> NegativeDataPropertyAssertion:
+        return NegativeDataPropertyAssertion(
+            self.prop(),
+            self.subject(),
+            self.value(),
+            self.annotations()
+        )
+
+
+cdef class NegativeDataPropertyAssertion(_DataPropertyAssertion):
+    def __init__(
+        self,
+        prop: DataProperty,
+        subj: Individual,
+        value: Literal,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_neg_data_prop_assert_axiom(prop.ptr, subj.ptr,
+                                                   <CowlLiteral *>value.ptr, <CowlVector *>annot.p)
 
     def __invert__(self) -> DataPropertyAssertion:
         return DataPropertyAssertion(
@@ -1171,6 +1607,82 @@ cdef class NegativeDataPropertyAssertion(DataPropertyAssertion):
             self.value(),
             self.annotations()
         )
+
+
+cdef class AnnotationAssertion(Axiom):
+    def __init__(
+        self,
+        prop: AnnotationProperty,
+        subject: Object,
+        value: Object,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_annot_assert_axiom(<CowlAnnotProp *>prop.ptr, subject.ptr,
+                                           value.ptr, <CowlVector *>annot.p)
+
+    def prop(self) -> AnnotationProperty:
+        return Object.retain(cowl_annot_assert_axiom_get_prop(<CowlAnnotAssertAxiom *>self.ptr))
+
+    def subject(self) -> Object:
+        return Object.retain(cowl_annot_assert_axiom_get_subject(<CowlAnnotAssertAxiom *>self.ptr))
+
+    def value(self) -> Object:
+        return Object.retain(cowl_annot_assert_axiom_get_value(<CowlAnnotAssertAxiom *>self.ptr))
+
+
+cdef class SubAnnotationPropertyOf(Axiom):
+    def __init__(
+        self,
+        child: AnnotationProperty,
+        parent: AnnotationProperty,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_sub_annot_prop_axiom(<CowlAnnotProp *>child.ptr,
+                                             <CowlAnnotProp *>parent.ptr, <CowlVector *>annot.p)
+
+    def child(self) -> AnnotationProperty:
+        return Object.retain(cowl_sub_annot_prop_axiom_get_sub(<CowlSubAnnotPropAxiom *>self.ptr))
+
+    def parent(self) -> AnnotationProperty:
+        return Object.retain(cowl_sub_annot_prop_axiom_get_super(<CowlSubAnnotPropAxiom *>self.ptr))
+
+
+cdef class AnnotationPropertyDomain(Axiom):
+    def __init__(
+        self,
+        prop: AnnotationProperty,
+        domain: IRI,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_annot_prop_domain_axiom(<CowlAnnotProp *>prop.ptr,
+                                                <CowlIRI *>domain.ptr, <CowlVector *>annot.p)
+
+    def prop(self) -> AnnotationProperty:
+        return Object.retain(cowl_annot_prop_domain_axiom_get_prop(<CowlAnnotPropDomainAxiom *>self.ptr))
+
+    def domain(self) -> IRI:
+        return Object.retain(cowl_annot_prop_domain_axiom_get_domain(<CowlAnnotPropDomainAxiom *>self.ptr))
+
+
+cdef class AnnotationPropertyRange(Axiom):
+    def __init__(
+        self,
+        prop: AnnotationProperty,
+        range_: IRI,
+        annotations: Iterable[Annotation] | None = None,
+    ) -> None:
+        cdef Ptr annot = cowl_vector_from_py(annotations)
+        self.ptr = cowl_annot_prop_range_axiom(<CowlAnnotProp *>prop.ptr,
+                                               <CowlIRI *>range_.ptr, <CowlVector *>annot.p)
+
+    def prop(self) -> AnnotationProperty:
+        return Object.retain(cowl_annot_prop_range_axiom_get_prop(<CowlAnnotPropRangeAxiom *>self.ptr))
+
+    def range(self) -> IRI:
+        return Object.retain(cowl_annot_prop_range_axiom_get_range(<CowlAnnotPropRangeAxiom *>self.ptr))
 
 
 # Ontology
@@ -1259,7 +1771,7 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         ustring_deinit(&path_str)
 
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
-        cdef IRI iri_obj = iri if isinstance(iri, IRI) else IRI(iri)
+        cdef IRI iri_obj = _as_iri(iri)
         cowl_ontology_set_iri(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
         if update_prefix:
             iri_str = iri_obj.as_string()
@@ -1272,7 +1784,7 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         return Object.retain(version_ptr) if version_ptr else None
 
     def set_version(self, version: str | IRI) -> None:
-        cdef IRI iri_obj = version if isinstance(version, IRI) else IRI(version)
+        cdef IRI iri_obj = _as_iri(version)
         cowl_ontology_set_version(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
 
     cdef void _foreach_axiom(

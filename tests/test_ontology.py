@@ -34,29 +34,52 @@ def test_round_trip() -> None:
 
 def test_editing() -> None:
     onto = cowl.Ontology()
-    onto.set_iri("http://example.org/test", update_prefix=True)
+    onto.set_iri("http://swot.sisinflab.poliba.it/university", update_prefix=True)
 
-    a = onto.Class("A")
-    b = onto.Class("B")
-    c = onto.Class("C")
-    d = onto.Class("D")
-    obj_prop = onto.ObjectProperty("objProp")
-    data_prop = onto.DataProperty("dataProp")
-    ind_a = onto.Individual("indA")
-    ind_b = onto.Individual("indB")
+    person = onto.Class("Person")
+    adult = onto.Class("Adult")
+    university_member = onto.Class("UniversityMember")
+    student = onto.Class("Student")
+    professor = onto.Class("Professor")
+    course = onto.Class("Course")
+    graduate_student = onto.Class("GraduateStudent")
+    undergraduate_student = onto.Class("UndergraduateStudent")
+    age = onto.Datatype("Age")
+    email = onto.Datatype("Email")
+    teaches = onto.ObjectProperty("teaches")
+    is_taught_by = onto.ObjectProperty("isTaughtBy")
+    is_teacher_of = onto.ObjectProperty("isTeacherOf")
+    is_enrolled_in = onto.ObjectProperty("isEnrolledIn")
+    has_supervisor = onto.ObjectProperty("hasSupervisor")
+    has_age = onto.DataProperty("hasAge")
+    has_email = onto.DataProperty("hasEmail")
+    john_doe = onto.Individual("JohnDoe")
+    jane_smith = onto.Individual("JaneSmith")
 
     axioms: tuple[cowl.Axiom, ...] = (
-        a.is_a(b.that(c | ~d)),
-        c.is_disjoint_with(d),
-        ind_a.is_a(obj_prop.max(5) & obj_prop.all(c) & obj_prop.some(c)),
-        ind_b.is_a(data_prop.exactly(1, cowl.XSD.INTEGER) & data_prop.some(cowl.XSD.STRING)),
-        ~obj_prop(ind_a, ind_b),
-        data_prop(ind_a, 10),
-        obj_prop.has_domain(a),
-        obj_prop.is_transitive(),
-        obj_prop.has_range(obj_prop.all(c)),
-        data_prop.has_range(cowl.one_of(10, 20, 30)),
-        data_prop.is_functional(),
+        adult.is_a(person.that(has_age.only(cowl.XSD.INTEGER.restricted_by(min_inclusive=18)))),
+        student.is_a(adult.that(is_enrolled_in.some(course))),
+        professor.is_a(adult.that(teaches.some(course))),
+        student.is_not_a(professor),
+        graduate_student.is_equivalent_to(student.that(has_supervisor.some(professor))),
+        undergraduate_student.is_a(student & ~graduate_student),
+        (student | professor).is_subclass_of(university_member),
+        university_member.has_key(has_email),
+        course.is_subclass_of(is_taught_by.exactly(1, professor)),
+        teaches.is_inverse_of(is_taught_by),
+        has_age.is_functional(),
+        has_supervisor.is_functional(),
+        has_supervisor.is_subproperty_of(~is_teacher_of),
+        cowl.chain(teaches, ~is_enrolled_in).is_subproperty_of(is_teacher_of),
+        age.is_defined_as(cowl.XSD.NON_NEGATIVE_INTEGER.restricted_by(max_inclusive=150)),
+        email.is_defined_as(cowl.XSD.STRING.restricted_by(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")),
+        has_age.has_domain(person),
+        has_age.has_range(age),
+        john_doe.is_a(professor),
+        jane_smith.is_a(graduate_student),
+        has_supervisor(jane_smith, john_doe),
+        has_email(john_doe, "john.doe@example.edu"),
+        has_age(jane_smith, 25),
     )
 
     onto.add(*axioms)

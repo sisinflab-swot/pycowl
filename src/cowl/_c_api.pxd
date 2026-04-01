@@ -97,6 +97,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlDeclAxiom: pass
     ctypedef struct CowlEntity: pass
     ctypedef struct CowlFilter: pass
+    ctypedef struct CowlFuncDataPropAxiom: pass
     ctypedef struct CowlIndividual: pass
     ctypedef struct CowlInvObjProp: pass
     ctypedef struct CowlIRI: pass
@@ -114,6 +115,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlObjOneOf: pass
     ctypedef struct CowlObjProp: pass
     ctypedef struct CowlObjPropAssertAxiom: pass
+    ctypedef struct CowlObjPropCharAxiom: pass
     ctypedef struct CowlObjPropDomainAxiom: pass
     ctypedef struct CowlObjPropExp: pass
     ctypedef struct CowlObjPropRangeAxiom: pass
@@ -253,6 +255,15 @@ cdef extern from "cowl.h":
         COWL_CT_MAX
         COWL_CT_EXACT
 
+    cdef enum CowlCharAxiomType:
+        COWL_CAT_FUNC
+        COWL_CAT_INV_FUNC
+        COWL_CAT_REFL
+        COWL_CAT_IRREFL
+        COWL_CAT_SYMM
+        COWL_CAT_ASYMM
+        COWL_CAT_TRANS
+
     cdef enum CowlNAryAxiomType:
         COWL_NAT_EQUIV
         COWL_NAT_DISJ
@@ -338,6 +349,8 @@ cdef extern from "cowl.h":
     CowlDatatype *cowl_datatype(CowlIRI *iri)
     CowlDeclAxiom *cowl_decl_axiom(CowlAnyEntity *entity, CowlVector *annot)
     CowlEntity *cowl_decl_axiom_get_entity(CowlDeclAxiom *axiom)
+    CowlFuncDataPropAxiom *cowl_func_data_prop_axiom(CowlAnyDataPropExp *prop, CowlVector *annot)
+    CowlDataPropExp *cowl_func_data_prop_axiom_get_prop(CowlFuncDataPropAxiom *axiom)
     CowlInvObjProp *cowl_inv_obj_prop(CowlObjProp *prop)
     CowlObjProp *cowl_inv_obj_prop_get_prop(CowlInvObjProp *inv)
     CowlIRI *cowl_iri(CowlString *prefix, CowlString *suffix)
@@ -374,6 +387,9 @@ cdef extern from "cowl.h":
     CowlObjPropExp *cowl_obj_prop_assert_axiom_get_prop(CowlObjPropAssertAxiom *axiom)
     CowlIndividual *cowl_obj_prop_assert_axiom_get_subject(CowlObjPropAssertAxiom *axiom)
     CowlIndividual *cowl_obj_prop_assert_axiom_get_object(CowlObjPropAssertAxiom *axiom)
+    CowlObjPropCharAxiom *cowl_obj_prop_char_axiom(CowlCharAxiomType type,
+        CowlAnyObjPropExp *prop, CowlVector *annot)
+    CowlObjPropExp *cowl_obj_prop_char_axiom_get_prop(CowlObjPropCharAxiom *axiom)
     CowlObjPropDomainAxiom *cowl_obj_prop_domain_axiom(CowlAnyObjPropExp *prop,
         CowlAnyClsExp *domain, CowlVector *annot)
     CowlObjPropExp *cowl_obj_prop_domain_axiom_get_prop(CowlObjPropDomainAxiom *axiom)

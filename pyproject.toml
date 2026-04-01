@@ -6,12 +6,18 @@ authors = [
     { name = "Davide Loconte", email = "davide.loconte@poliba.it" },
     { name = "Ivano Bilenchi", email = "ivano.bilenchi@poliba.it" },
 ]
+license = "EPL-2.0"
+license-files = ["LICENSE"]
+readme = "README.md"
 classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.12"
 dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
 
 [project.urls]
 Homepage = "https://swot.sisinflab.poliba.it/pycowl"

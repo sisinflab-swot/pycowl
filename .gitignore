@@ -247,6 +247,7 @@ $RECYCLE.BIN/
 *.lnk
 
 # Project-specific
+.vscode/
 !/lib
 *.c
 *.so

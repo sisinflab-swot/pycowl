@@ -103,10 +103,10 @@ cdef void _init():
         "length": (XSD.length, XSD.non_negative_integer),
         "min_length": (XSD.min_length, XSD.non_negative_integer),
         "max_length": (XSD.max_length, XSD.non_negative_integer),
-        "min_exclusive": (XSD.min_exclusive, None),
-        "min_inclusive": (XSD.min_inclusive, None),
-        "max_exclusive": (XSD.max_exclusive, None),
-        "max_inclusive": (XSD.max_inclusive, None),
+        "value_gt": (XSD.min_exclusive, None),
+        "value_ge": (XSD.min_inclusive, None),
+        "value_lt": (XSD.max_exclusive, None),
+        "value_le": (XSD.max_inclusive, None),
         "pattern": (XSD.pattern, XSD.string),
         "lang_range": (RDF.lang_range, XSD.string),
     }
@@ -860,10 +860,28 @@ cdef class Datatype(DataRange, Entity):
     def __getitem__(self, item: FacetRestriction) -> DatatypeRestriction:
         return DatatypeRestriction(self, item)
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __eq__(self, other: Datatype) -> bool:
+        return super().__eq__(other)
+
+    def __le__(self, val: LiteralValue) -> DatatypeRestriction:
+        return DatatypeRestriction(self, XSD.max_inclusive(val, self))
+
+    def __lt__(self, val: LiteralValue) -> DatatypeRestriction:
+        return DatatypeRestriction(self, XSD.max_exclusive(val, self))
+
+    def __ge__(self, val: LiteralValue) -> DatatypeRestriction:
+        return DatatypeRestriction(self, XSD.min_inclusive(val, self))
+
+    def __gt__(self, val: LiteralValue) -> DatatypeRestriction:
+        return DatatypeRestriction(self, XSD.min_exclusive(val, self))
+
     def is_defined_as(self, data_range: DataRange) -> DatatypeDefinition:
         return DatatypeDefinition(self, data_range)
 
-    def restricted_by(
+    def that_has(
         self,
         *restrictions: FacetRestriction,
         **kw: Literal | LiteralValue | None,
@@ -939,11 +957,40 @@ cdef class DatatypeRestriction(DataRange):
     def __getitem__(self, item: FacetRestriction) -> DatatypeRestriction:
         return DatatypeRestriction(self.datatype(), *self.restrictions(), item)
 
+    def __hash__(self) -> int:
+        return super().__hash__()
+
+    def __eq__(self, other: DatatypeRestriction) -> bool:
+        return super().__eq__(other)
+
+    def __le__(self, val: LiteralValue) -> DatatypeRestriction:
+        dt = self.datatype()
+        return DatatypeRestriction(dt, *self.restrictions(), XSD.max_inclusive(val, dt))
+
+    def __lt__(self, val: LiteralValue) -> DatatypeRestriction:
+        dt = self.datatype()
+        return DatatypeRestriction(dt, *self.restrictions(), XSD.max_exclusive(val, dt))
+
+    def __ge__(self, val: LiteralValue) -> DatatypeRestriction:
+        dt = self.datatype()
+        return DatatypeRestriction(dt, *self.restrictions(), XSD.min_inclusive(val, dt))
+
+    def __gt__(self, val: LiteralValue) -> DatatypeRestriction:
+        dt = self.datatype()
+        return DatatypeRestriction(dt, *self.restrictions(), XSD.min_exclusive(val, dt))
+
     def datatype(self) -> Datatype:
         return Object.retain(cowl_datatype_restr_get_datatype(<CowlDatatypeRestr *>self.ptr))
 
     def restrictions(self) -> Collection[FacetRestriction]:
         return Object.retain(cowl_datatype_restr_get_restrictions(<CowlDatatypeRestr *>self.ptr))
+
+    def that_has(
+        self,
+        *restrictions: FacetRestriction,
+        **kw: Literal | LiteralValue | None,
+    ) -> DatatypeRestriction:
+        return self.datatype().that_has(*self.restrictions(), *restrictions, **kw)
 
 
 # Individuals

@@ -154,12 +154,19 @@ cdef class Ptr:
 cdef Ptr NULLPtr = Ptr.__new__(Ptr)
 
 
-cdef UString ustring_from_py(str pystr):
-    encoded = pystr.encode()
-    return ustring_copy(<const char *>encoded, len(encoded))
+cdef inline UString ustring_wrap_bytes(bytes data):
+    return ustring_wrap(<const char *>data, len(data))
 
 
-cdef str ustring_to_py(UString *ustr, bool deinit = True):
+cdef inline UString ustring_copy_bytes(bytes data):
+    return ustring_copy(<const char *>data, len(data))
+
+
+cdef inline UString ustring_copy_str(str pystr):
+    return ustring_copy_bytes(pystr.encode())
+
+
+cdef str ustring_to_str(UString *ustr, bool deinit = True):
     cdef UString val = ustr[0]
     try:
         ret: str = ustring_data(val)[:ustring_length(val)].decode()
@@ -169,7 +176,7 @@ cdef str ustring_to_py(UString *ustr, bool deinit = True):
     return ret
 
 
-cdef str ustrbuf_to_py(UStrBuf *buf, bool deinit = True):
+cdef str ustrbuf_to_str(UStrBuf *buf, bool deinit = True):
     try:
         ret: str = ustrbuf_data(buf)[:ustrbuf_length(buf)].decode()
     finally:
@@ -178,16 +185,16 @@ cdef str ustrbuf_to_py(UStrBuf *buf, bool deinit = True):
     return ret
 
 
-cdef CowlString *cowl_string_from_py_raw(str s):
-    return cowl_string(ustring_from_py(s))
+cdef CowlString *cowl_string_from_str_raw(str s):
+    return cowl_string(ustring_copy_str(s))
 
 
-cdef Ptr cowl_string_from_py(str s):
-    return Ptr.wrap(cowl_string_from_py_raw(s))
+cdef Ptr cowl_string_from_str(str s):
+    return Ptr.wrap(cowl_string_from_str_raw(s))
 
 
-cdef str cowl_string_to_py(CowlString *s):
-    return ustring_to_py(<UString *>cowl_string_get_raw(s), deinit=False)
+cdef str cowl_string_to_str(CowlString *s):
+    return ustring_to_str(<UString *>cowl_string_get_raw(s), deinit=False)
 
 
 cdef CowlVector *cowl_vector_from_py_raw(items: Iterable[Object] | None):
@@ -296,6 +303,10 @@ cdef inline IRI _as_iri(val: IRI | str):
     return val if isinstance(val, IRI) else IRI(val)
 
 
+cdef inline bytes _as_bytes(val):
+    return (val if isinstance(val, str) else str(val)).encode()
+
+
 # Enums
 
 
@@ -345,11 +356,11 @@ cdef class Object:
 
     def __str__(self) -> str:
         cdef UString str_rep = cowl_to_ustring(self.ptr)
-        return ustring_to_py(&str_rep)
+        return ustring_to_str(&str_rep)
 
     def __repr__(self) -> str:
         cdef UString str_rep = cowl_to_debug_ustring(self.ptr)
-        return ustring_to_py(&str_rep)
+        return ustring_to_str(&str_rep)
 
     def __eq__(self, other: Object) -> bool:
         return cowl_equals(self.ptr, other.ptr)
@@ -410,7 +421,7 @@ class HasIRI:
         if not ns_ptr:
             raise TypeError("Object does not have a namespace")
 
-        return cowl_string_to_py(ns_ptr)
+        return cowl_string_to_str(ns_ptr)
 
     def remainder(self: Object) -> str:
         cdef CowlString *rem_ptr = cowl_get_rem(self.ptr)
@@ -418,7 +429,7 @@ class HasIRI:
         if rem_ptr == NULL:
             raise TypeError("Object does not have a remainder")
 
-        return cowl_string_to_py(rem_ptr)
+        return cowl_string_to_str(rem_ptr)
 
 
 class HasPrimitives:
@@ -514,19 +525,17 @@ cdef class IRI(Object, Primitive, HasIRI):
 
     def as_string(self) -> str:
         cdef UString iri_str = cowl_iri_to_ustring(<CowlIRI *>self.ptr)
-        return ustring_to_py(&iri_str)
+        return ustring_to_str(&iri_str)
 
 
 cdef inline void *_iri_from_str(str s):
-    cdef UString u_str = ustring_from_py(s)
-    cdef CowlIRI *ret = cowl_iri_from_string(u_str)
-    ustring_deinit(&u_str)
-    return ret
+    byte_str = s.encode()
+    return cowl_iri_from_string(ustring_wrap_bytes(byte_str))
 
 
 cdef inline void *_iri_from_prefix_suffix(str prefix, str suffix):
-    cdef Ptr p_ptr = cowl_string_from_py(prefix)
-    cdef Ptr s_ptr = cowl_string_from_py(suffix)
+    cdef Ptr p_ptr = cowl_string_from_str(prefix)
+    cdef Ptr s_ptr = cowl_string_from_str(suffix)
     return cowl_iri(<CowlString *>p_ptr.p, <CowlString *>s_ptr.p)
 
 
@@ -539,19 +548,19 @@ cdef class Literal(Object, HasPrimitives):
     ) -> None:
         value, datatype = _py_to_dt_value(value, datatype)
         cdef CowlDatatype *c_dt = <CowlDatatype *>datatype.ptr if datatype else NULL
-        cdef Ptr c_value = cowl_string_from_py(value)
-        cdef Ptr c_lang = cowl_string_from_py(language) if language else NULLPtr
+        cdef Ptr c_value = cowl_string_from_str(value)
+        cdef Ptr c_lang = cowl_string_from_str(language) if language else NULLPtr
         self.ptr = cowl_literal(c_dt, <CowlString *>c_value.p, <CowlString *>c_lang.p)
 
     def datatype(self) -> Datatype:
         return Object.retain(cowl_literal_get_datatype(<CowlLiteral *>self.ptr))
 
     def value(self) -> str:
-        return cowl_string_to_py(cowl_literal_get_value(<CowlLiteral *>self.ptr))
+        return cowl_string_to_str(cowl_literal_get_value(<CowlLiteral *>self.ptr))
 
     def language(self) -> str | None:
         cdef CowlString *c_str = cowl_literal_get_lang(<CowlLiteral *>self.ptr)
-        return cowl_string_to_py(c_str) if c_str else None
+        return cowl_string_to_str(c_str) if c_str else None
 
 
 def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | None]:
@@ -961,7 +970,7 @@ cdef class NamedIndividual(Individual, Entity):
 
 cdef class AnonymousIndividual(Individual):
     def __init__(self, node_id: str | None = None) -> None:
-        cdef Ptr c_str = cowl_string_from_py(node_id) if node_id else NULLPtr
+        cdef Ptr c_str = cowl_string_from_str(node_id) if node_id else NULLPtr
         self.ptr = cowl_anon_ind(<CowlString *>c_str.p)
 
 
@@ -1729,8 +1738,9 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     @classmethod
     def at_path(cls, path: Path | str) -> Ontology:
-        cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
-        cdef void *ptr = cowl_ontology_at_path(path_str)
+        bytes_path = _as_bytes(path)
+        cdef UString path_str = ustring_wrap_bytes(bytes_path)
+        cdef CowlOntology *ptr = cowl_ontology_at_path(path_str)
 
         if not ptr:
             msg = f"Failed to load ontology at path: {path}"
@@ -1760,15 +1770,15 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         uostream_to_strbuf(&stream, &buf)
         cowl_ontology_to_stream(<CowlOntology *>self.ptr, &stream)
         uostream_deinit(&stream)
-        return ustrbuf_to_py(&buf)
+        return ustrbuf_to_str(&buf)
 
     def IRI(self, iri: str) -> IRI:
         return self.prefix_map.IRI(iri)
 
     def to_path(self, path: Path | str) -> None:
-        cdef UString path_str = ustring_from_py(path if isinstance(path, str) else str(path))
+        bytes_path = _as_bytes(path)
+        cdef UString path_str = ustring_wrap_bytes(bytes_path)
         cowl_ontology_to_path(<CowlOntology *>self.ptr, path_str)
-        ustring_deinit(&path_str)
 
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         cdef IRI iri_obj = _as_iri(iri)
@@ -1895,31 +1905,31 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
         return Object.retain(cowl_get_prefix_map())
 
     def IRI(self, iri: str) -> IRI:
-        cdef UString iri_str = ustring_from_py(iri if ":" in iri else ":" + iri)
+        iri_bytes = (iri if ":" in iri else ":" + iri).encode()
+        cdef UString iri_str = ustring_wrap_bytes(iri_bytes)
         cdef CowlIRI *iri_ptr = cowl_prefix_map_parse_iri(<CowlPrefixMap *>self.ptr, iri_str)
-        ustring_deinit(&iri_str)
         return Object.wrap(iri_ptr)
 
     def __init__(self) -> None:
         self.ptr = cowl_prefix_map()
 
     def __setitem__(self, prefix: str, ns: str) -> None:
-        cdef Ptr p = cowl_string_from_py(prefix)
-        cdef Ptr n = cowl_string_from_py(ns)
+        cdef Ptr p = cowl_string_from_str(prefix)
+        cdef Ptr n = cowl_string_from_str(ns)
         cowl_prefix_map_add(<CowlPrefixMap *>self.ptr, <CowlString *>p.p, <CowlString *>n.p, True)
 
     def __getitem__(self, prefix_or_ns: str) -> str:
-        cdef Ptr ptr = cowl_string_from_py(prefix_or_ns)
+        cdef Ptr ptr = cowl_string_from_str(prefix_or_ns)
         cdef CowlString *c_str = <CowlString *>ptr.p
         cdef CowlString *result = cowl_prefix_map_get_ns(<CowlPrefixMap *>self.ptr, c_str)
         if not result:
             result = cowl_prefix_map_get_prefix(<CowlPrefixMap *>self.ptr, c_str)
         if not result:
             raise KeyError(prefix_or_ns)
-        return cowl_string_to_py(result)
+        return cowl_string_to_str(result)
 
     def __delitem__(self, prefix_or_ns: str) -> None:
-        cdef Ptr ptr = cowl_string_from_py(prefix_or_ns)
+        cdef Ptr ptr = cowl_string_from_str(prefix_or_ns)
         cdef CowlString *c_str = <CowlString *>ptr.p
         cdef cowl_ret ret = cowl_prefix_map_remove_prefix(<CowlPrefixMap *>self.ptr, c_str)
         if ret == Ret.NO:
@@ -1940,8 +1950,8 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
         cdef int size = uhash_size_CowlObjectPtr(h)
         cdef int idx = uhash_next_CowlObjectPtr(h, 0)
         while idx < size:
-            key = cowl_string_to_py(<CowlString *>uhash_key_CowlObjectPtr(h, idx))
-            value = cowl_string_to_py(<CowlString *>uhmap_val_CowlObjectPtr(h, idx))
+            key = cowl_string_to_str(<CowlString *>uhash_key_CowlObjectPtr(h, idx))
+            value = cowl_string_to_str(<CowlString *>uhmap_val_CowlObjectPtr(h, idx))
             yield (key, value)
             idx = uhash_next_CowlObjectPtr(h, idx + 1)
 

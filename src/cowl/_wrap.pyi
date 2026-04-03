@@ -844,84 +844,84 @@ class PrefixMap(Object, MutableMapping[str, str], PrimitiveFactory):
 # Vocabularies
 
 class OWL:
-    PREFIX: str
-    NS: str
+    prefix: str
+    ns: str
 
-    BACKWARD_COMPATIBLE_WITH: IRI
-    DEPRECATED: IRI
-    INCOMPATIBLE_WITH: IRI
-    PRIOR_VERSION: IRI
-    VERSION_INFO: IRI
+    backward_compatible_with: IRI
+    deprecated: IRI
+    incompatible_with: IRI
+    prior_version: IRI
+    version_info: IRI
 
-    BOTTOM_DATA_PROPERTY: DataProperty
-    BOTTOM_OBJECT_PROPERTY: ObjectProperty
-    NOTHING: Class
-    RATIONAL: Datatype
-    REAL: Datatype
-    THING: Class
-    TOP_DATA_PROPERTY: DataProperty
-    TOP_OBJECT_PROPERTY: ObjectProperty
+    bottom_data_property: DataProperty
+    bottom_object_property: ObjectProperty
+    nothing: Class
+    rational: Datatype
+    real: Datatype
+    thing: Class
+    top_data_property: DataProperty
+    top_object_property: ObjectProperty
 
 class RDF:
-    PREFIX: str
-    NS: str
+    prefix: str
+    ns: str
 
-    LANG_RANGE: IRI
+    lang_range: IRI
 
-    LANG_STRING: Datatype
-    PLAIN_LITERAL: Datatype
-    XML_LITERAL: Datatype
+    lang_string: Datatype
+    plain_literal: Datatype
+    xml_literal: Datatype
 
 class RDFS:
-    PREFIX: str
-    NS: str
+    prefix: str
+    ns: str
 
-    COMMENT: IRI
-    IS_DEFINED_BY: IRI
-    LABEL: IRI
-    SEE_ALSO: IRI
+    comment: IRI
+    is_defined_by: IRI
+    label: IRI
+    see_also: IRI
 
-    LITERAL: Datatype
+    literal: Datatype
 
 class XSD:
-    PREFIX: str
-    NS: str
+    prefix: str
+    ns: str
 
-    LENGTH: IRI
-    MAX_EXCLUSIVE: IRI
-    MAX_INCLUSIVE: IRI
-    MAX_LENGTH: IRI
-    MIN_EXCLUSIVE: IRI
-    MIN_INCLUSIVE: IRI
-    MIN_LENGTH: IRI
-    PATTERN: IRI
+    length: IRI
+    max_exclusive: IRI
+    max_inclusive: IRI
+    max_length: IRI
+    min_exclusive: IRI
+    min_inclusive: IRI
+    min_length: IRI
+    pattern: IRI
 
-    ANY_URI: Datatype
-    BASE64_BINARY: Datatype
-    BOOLEAN: Datatype
-    BYTE: Datatype
-    DATE_TIME: Datatype
-    DATE_TIME_STAMP: Datatype
-    DECIMAL: Datatype
-    DOUBLE: Datatype
-    FLOAT: Datatype
-    HEX_BINARY: Datatype
-    INT: Datatype
-    INTEGER: Datatype
-    LANGUAGE: Datatype
-    LONG: Datatype
-    NAME: Datatype
-    NCNAME: Datatype
-    NEGATIVE_INTEGER: Datatype
-    NMTOKEN: Datatype
-    NON_NEGATIVE_INTEGER: Datatype
-    NON_POSITIVE_INTEGER: Datatype
-    NORMALIZED_STRING: Datatype
-    POSITIVE_INTEGER: Datatype
-    SHORT: Datatype
-    STRING: Datatype
-    TOKEN: Datatype
-    UNSIGNED_BYTE: Datatype
-    UNSIGNED_INT: Datatype
-    UNSIGNED_LONG: Datatype
-    UNSIGNED_SHORT: Datatype
+    any_uri: Datatype
+    base64_binary: Datatype
+    boolean: Datatype
+    byte: Datatype
+    date_time: Datatype
+    date_time_stamp: Datatype
+    decimal: Datatype
+    double: Datatype
+    float: Datatype
+    hex_binary: Datatype
+    int: Datatype
+    integer: Datatype
+    language: Datatype
+    long: Datatype
+    name: Datatype
+    ncname: Datatype
+    negative_integer: Datatype
+    nmtoken: Datatype
+    non_negative_integer: Datatype
+    non_positive_integer: Datatype
+    normalized_string: Datatype
+    positive_integer: Datatype
+    short: Datatype
+    string: Datatype
+    token: Datatype
+    unsigned_byte: Datatype
+    unsigned_int: Datatype
+    unsigned_long: Datatype
+    unsigned_short: Datatype

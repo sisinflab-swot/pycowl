@@ -57,7 +57,7 @@ def test_editing() -> None:
     jane_smith = onto.Individual("JaneSmith")
 
     axioms: tuple[cowl.Axiom, ...] = (
-        adult.is_a(person.that(has_age.only(cowl.XSD.INTEGER.restricted_by(min_inclusive=18)))),
+        adult.is_a(person.that(has_age.only(cowl.xsd.integer.restricted_by(min_inclusive=18)))),
         student.is_a(adult.that(is_enrolled_in.some(course))),
         professor.is_a(adult.that(teaches.some(course))),
         student.is_not_a(professor),
@@ -71,8 +71,8 @@ def test_editing() -> None:
         has_supervisor.is_functional(),
         has_supervisor.is_subproperty_of(~is_teacher_of),
         cowl.chain(teaches, ~is_enrolled_in).is_subproperty_of(is_teacher_of),
-        age.is_defined_as(cowl.XSD.NON_NEGATIVE_INTEGER.restricted_by(max_inclusive=150)),
-        email.is_defined_as(cowl.XSD.STRING.restricted_by(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")),
+        age.is_defined_as(cowl.xsd.non_negative_integer.restricted_by(max_inclusive=150)),
+        email.is_defined_as(cowl.xsd.string.restricted_by(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")),
         has_age.has_domain(person),
         has_age.has_range(age),
         john_doe.is_a(professor),

@@ -100,15 +100,15 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_I_ANONYMOUS] = AnonymousIndividual
     _TYPES_R = {t: i for i, t in enumerate(_TYPES)}
     _FACETS = {
-        "length": (XSD.LENGTH, XSD.NON_NEGATIVE_INTEGER),
-        "min_length": (XSD.MIN_LENGTH, XSD.NON_NEGATIVE_INTEGER),
-        "max_length": (XSD.MAX_LENGTH, XSD.NON_NEGATIVE_INTEGER),
-        "min_exclusive": (XSD.MIN_EXCLUSIVE, None),
-        "min_inclusive": (XSD.MIN_INCLUSIVE, None),
-        "max_exclusive": (XSD.MAX_EXCLUSIVE, None),
-        "max_inclusive": (XSD.MAX_INCLUSIVE, None),
-        "pattern": (XSD.PATTERN, XSD.STRING),
-        "lang_range": (RDF.LANG_RANGE, XSD.STRING),
+        "length": (XSD.length, XSD.non_negative_integer),
+        "min_length": (XSD.min_length, XSD.non_negative_integer),
+        "max_length": (XSD.max_length, XSD.non_negative_integer),
+        "min_exclusive": (XSD.min_exclusive, None),
+        "min_inclusive": (XSD.min_inclusive, None),
+        "max_exclusive": (XSD.max_exclusive, None),
+        "max_inclusive": (XSD.max_inclusive, None),
+        "pattern": (XSD.pattern, XSD.string),
+        "lang_range": (RDF.lang_range, XSD.string),
     }
 
 
@@ -558,12 +558,12 @@ def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | N
     if isinstance(val, str):
         return val, dt
     if isinstance(val, bool):
-        return "true" if val else "false", XSD.BOOLEAN if dt is None else dt
+        return "true" if val else "false", XSD.boolean if dt is None else dt
     if dt is None:
         if isinstance(val, int):
-            dt = XSD.INTEGER
+            dt = XSD.integer
         elif isinstance(val, float):
-            dt = XSD.DOUBLE
+            dt = XSD.double
     return str(val), dt
 
 
@@ -1950,90 +1950,90 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
 
 
 cdef class OWL:
-    PREFIX = "owl"
-    NS = "http://www.w3.org/2002/07/owl#"
+    prefix = "owl"
+    ns = "http://www.w3.org/2002/07/owl#"
 
-    BACKWARD_COMPATIBLE_WITH = IRI(NS, "backwardCompatibleWith")
-    DEPRECATED = IRI(NS, "deprecated")
-    INCOMPATIBLE_WITH = IRI(NS, "incompatibleWith")
-    PRIOR_VERSION = IRI(NS, "priorVersion")
-    VERSION_INFO = IRI(NS, "versionInfo")
+    backward_compatible_with = IRI(ns, "backwardCompatibleWith")
+    deprecated = IRI(ns, "deprecated")
+    incompatible_with = IRI(ns, "incompatibleWith")
+    prior_version = IRI(ns, "priorVersion")
+    version_info = IRI(ns, "versionInfo")
 
-    BOTTOM_DATA_PROPERTY = DataProperty(IRI(NS, "bottomDataProperty"))
-    BOTTOM_OBJECT_PROPERTY = ObjectProperty(IRI(NS, "bottomObjectProperty"))
-    NOTHING = Class(IRI(NS, "Nothing"))
-    RATIONAL = Datatype(IRI(NS, "rational"))
-    REAL = Datatype(IRI(NS, "real"))
-    THING = Class(IRI(NS, "Thing"))
-    TOP_DATA_PROPERTY = DataProperty(IRI(NS, "topDataProperty"))
-    TOP_OBJECT_PROPERTY = ObjectProperty(IRI(NS, "topObjectProperty"))
+    bottom_data_property = DataProperty(IRI(ns, "bottomDataProperty"))
+    bottom_object_property = ObjectProperty(IRI(ns, "bottomObjectProperty"))
+    nothing = Class(IRI(ns, "Nothing"))
+    rational = Datatype(IRI(ns, "rational"))
+    real = Datatype(IRI(ns, "real"))
+    thing = Class(IRI(ns, "Thing"))
+    top_data_property = DataProperty(IRI(ns, "topDataProperty"))
+    top_object_property = ObjectProperty(IRI(ns, "topObjectProperty"))
 
 
 cdef class RDF:
-    PREFIX = "rdf"
-    NS = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    prefix = "rdf"
+    ns = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
-    LANG_RANGE = IRI(NS, "langRange")
+    lang_range = IRI(ns, "langRange")
 
-    LANG_STRING = Datatype(IRI(NS, "langString"))
-    PLAIN_LITERAL = Datatype(IRI(NS, "PlainLiteral"))
-    XML_LITERAL = Datatype(IRI(NS, "XMLLiteral"))
+    lang_string = Datatype(IRI(ns, "langString"))
+    plain_literal = Datatype(IRI(ns, "PlainLiteral"))
+    xml_literal = Datatype(IRI(ns, "XMLLiteral"))
 
 
 class RDFS:
-    PREFIX = "rdfs"
-    NS = "http://www.w3.org/2000/01/rdf-schema#"
+    prefix = "rdfs"
+    ns = "http://www.w3.org/2000/01/rdf-schema#"
 
-    COMMENT = IRI(NS, "comment")
-    IS_DEFINED_BY = IRI(NS, "isDefinedBy")
-    LABEL = IRI(NS, "label")
-    SEE_ALSO = IRI(NS, "seeAlso")
+    comment = IRI(ns, "comment")
+    is_defined_by = IRI(ns, "isDefinedBy")
+    label = IRI(ns, "label")
+    see_also = IRI(ns, "seeAlso")
 
-    LITERAL = Datatype(IRI(NS, "Literal"))
+    literal = Datatype(IRI(ns, "Literal"))
 
 
 cdef class XSD:
-    PREFIX = "xsd"
-    NS = "http://www.w3.org/2001/XMLSchema#"
+    prefix = "xsd"
+    ns = "http://www.w3.org/2001/XMLSchema#"
 
-    LENGTH = IRI(NS, "length")
-    MAX_EXCLUSIVE = IRI(NS, "maxExclusive")
-    MAX_INCLUSIVE = IRI(NS, "maxInclusive")
-    MAX_LENGTH = IRI(NS, "maxLength")
-    MIN_EXCLUSIVE = IRI(NS, "minExclusive")
-    MIN_INCLUSIVE = IRI(NS, "minInclusive")
-    MIN_LENGTH = IRI(NS, "minLength")
-    PATTERN = IRI(NS, "pattern")
+    length = IRI(ns, "length")
+    max_exclusive = IRI(ns, "maxExclusive")
+    max_inclusive = IRI(ns, "maxInclusive")
+    max_length = IRI(ns, "maxLength")
+    min_exclusive = IRI(ns, "minExclusive")
+    min_inclusive = IRI(ns, "minInclusive")
+    min_length = IRI(ns, "minLength")
+    pattern = IRI(ns, "pattern")
 
-    ANY_URI = Datatype(IRI(NS, "anyURI"))
-    BASE64_BINARY = Datatype(IRI(NS, "base64Binary"))
-    BOOLEAN = Datatype(IRI(NS, "boolean"))
-    BYTE = Datatype(IRI(NS, "byte"))
-    DATE_TIME = Datatype(IRI(NS, "dateTime"))
-    DATE_TIME_STAMP = Datatype(IRI(NS, "dateTimeStamp"))
-    DECIMAL = Datatype(IRI(NS, "decimal"))
-    DOUBLE = Datatype(IRI(NS, "double"))
-    FLOAT = Datatype(IRI(NS, "float"))
-    HEX_BINARY = Datatype(IRI(NS, "hexBinary"))
-    INT = Datatype(IRI(NS, "int"))
-    INTEGER = Datatype(IRI(NS, "integer"))
-    LANGUAGE = Datatype(IRI(NS, "language"))
-    LONG = Datatype(IRI(NS, "long"))
-    NAME = Datatype(IRI(NS, "Name"))
-    NCNAME = Datatype(IRI(NS, "NCName"))
-    NEGATIVE_INTEGER = Datatype(IRI(NS, "negativeInteger"))
-    NMTOKEN = Datatype(IRI(NS, "NMTOKEN"))
-    NON_NEGATIVE_INTEGER = Datatype(IRI(NS, "nonNegativeInteger"))
-    NON_POSITIVE_INTEGER = Datatype(IRI(NS, "nonPositiveInteger"))
-    NORMALIZED_STRING = Datatype(IRI(NS, "normalizedString"))
-    POSITIVE_INTEGER = Datatype(IRI(NS, "positiveInteger"))
-    SHORT = Datatype(IRI(NS, "short"))
-    STRING = Datatype(IRI(NS, "string"))
-    TOKEN = Datatype(IRI(NS, "token"))
-    UNSIGNED_BYTE = Datatype(IRI(NS, "unsignedByte"))
-    UNSIGNED_INT = Datatype(IRI(NS, "unsignedInt"))
-    UNSIGNED_LONG = Datatype(IRI(NS, "unsignedLong"))
-    UNSIGNED_SHORT = Datatype(IRI(NS, "unsignedShort"))
+    any_uri = Datatype(IRI(ns, "anyURI"))
+    base64_binary = Datatype(IRI(ns, "base64Binary"))
+    boolean = Datatype(IRI(ns, "boolean"))
+    byte = Datatype(IRI(ns, "byte"))
+    date_time = Datatype(IRI(ns, "dateTime"))
+    date_time_stamp = Datatype(IRI(ns, "dateTimeStamp"))
+    decimal = Datatype(IRI(ns, "decimal"))
+    double = Datatype(IRI(ns, "double"))
+    float = Datatype(IRI(ns, "float"))
+    hex_binary = Datatype(IRI(ns, "hexBinary"))
+    int = Datatype(IRI(ns, "int"))
+    integer = Datatype(IRI(ns, "integer"))
+    language = Datatype(IRI(ns, "language"))
+    long = Datatype(IRI(ns, "long"))
+    name = Datatype(IRI(ns, "Name"))
+    ncname = Datatype(IRI(ns, "NCName"))
+    negative_integer = Datatype(IRI(ns, "negativeInteger"))
+    nmtoken = Datatype(IRI(ns, "NMTOKEN"))
+    non_negative_integer = Datatype(IRI(ns, "nonNegativeInteger"))
+    non_positive_integer = Datatype(IRI(ns, "nonPositiveInteger"))
+    normalized_string = Datatype(IRI(ns, "normalizedString"))
+    positive_integer = Datatype(IRI(ns, "positiveInteger"))
+    short = Datatype(IRI(ns, "short"))
+    string = Datatype(IRI(ns, "string"))
+    token = Datatype(IRI(ns, "token"))
+    unsigned_byte = Datatype(IRI(ns, "unsignedByte"))
+    unsigned_int = Datatype(IRI(ns, "unsignedInt"))
+    unsigned_long = Datatype(IRI(ns, "unsignedLong"))
+    unsigned_short = Datatype(IRI(ns, "unsignedShort"))
 
 
 _init()  # Initialize module.

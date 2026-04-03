@@ -19,16 +19,14 @@ def test_iri() -> None:
 def test_literal() -> None:
     value = "Hello, world!"
     lang = "en"
-    str_dt = cowl.XSD.STRING
-    lang_dt = cowl.RDF.LANG_STRING
 
     lit_a = cowl.Literal(value)
-    lit_b = cowl.Literal(value, datatype=str_dt)
+    lit_b = cowl.Literal(value, datatype=cowl.xsd.string)
     lit_c = cowl.Literal(value, language=lang)
 
     assert lit_a == lit_b
     assert lit_a.value() == lit_b.value() == lit_c.value() == value
-    assert lit_a.datatype() == lit_b.datatype() == str_dt
-    assert lit_c.datatype() == lang_dt
+    assert lit_a.datatype() == lit_b.datatype() == cowl.xsd.string
+    assert lit_c.datatype() == cowl.rdf.lang_string
     assert lit_a.language() is lit_b.language() is None
     assert lit_c.language() == lang

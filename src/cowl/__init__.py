@@ -108,12 +108,13 @@ from ._wrap import (
     one_of,
 )
 
+owl = OWL
+rdf = RDF
+rdfs = RDFS
+xsd = XSD
+
 __all__ = [
     "IRI",
-    "OWL",
-    "RDF",
-    "RDFS",
-    "XSD",
     "Annotated",
     "Annotation",
     "AnnotationAssertion",
@@ -214,4 +215,8 @@ __all__ = [
     "all_same",
     "chain",
     "one_of",
+    "owl",
+    "rdf",
+    "rdfs",
+    "xsd",
 ]

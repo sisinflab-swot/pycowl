@@ -1,5 +1,6 @@
 # type: ignore
 from collections.abc import Collection as ABCCollection, MutableMapping
+from datetime import date, datetime
 from enum import IntFlag
 from typing import NoReturn, Protocol, TypeAlias, Union, overload
 from ._c_api cimport *
@@ -11,7 +12,7 @@ cowl_init()  # Trigger native library initialization on import.
 # Type mappings
 
 
-LiteralValue: TypeAlias = Union[str, int, float, bool]
+LiteralValue: TypeAlias = Union[str, int, float, bool, date, datetime]
 AnnotationSubject: TypeAlias = Union['IRI', 'AnonymousIndividual']
 AnnotationValue: TypeAlias = Union['IRI', 'Literal', 'AnonymousIndividual']
 
@@ -145,6 +146,10 @@ cdef class Ptr:
         cdef Ptr obj = Ptr.__new__(Ptr)
         obj.p = ptr
         return obj
+
+    @staticmethod
+    cdef Ptr to(Object obj):
+        return NULLPtr if obj is None else Ptr.wrap(cowl_retain(obj.ptr))
 
     def __dealloc__(self) -> None:
         if self.p:
@@ -303,8 +308,12 @@ cdef inline IRI _as_iri(val: IRI | str):
     return val if isinstance(val, IRI) else IRI(val)
 
 
+cdef inline str _as_str(val):
+    return val if isinstance(val, str) else str(val)
+
+
 cdef inline bytes _as_bytes(val):
-    return (val if isinstance(val, str) else str(val)).encode()
+    return _as_str(val).encode()
 
 
 # Enums
@@ -546,11 +555,18 @@ cdef class Literal(Object, HasPrimitives):
         datatype: Datatype | None = None,
         language: str | None = None,
     ) -> None:
-        value, datatype = _py_to_dt_value(value, datatype)
-        cdef CowlDatatype *c_dt = <CowlDatatype *>datatype.ptr if datatype else NULL
-        cdef Ptr c_value = cowl_string_from_str(value)
-        cdef Ptr c_lang = cowl_string_from_str(language) if language else NULLPtr
-        self.ptr = cowl_literal(c_dt, <CowlString *>c_value.p, <CowlString *>c_lang.p)
+        cdef Ptr c_value
+        cdef Ptr c_dt_or_lang
+
+        if language:
+            value = _as_str(value)
+            c_dt_or_lang = cowl_string_from_str(language)
+        else:
+            value, datatype = _dt_value_from_py(value, datatype)
+            c_dt_or_lang = Ptr.to(datatype)
+
+        c_value = cowl_string_from_str(value)
+        self.ptr = cowl_literal(<CowlString *>c_value.p, <CowlAny *>c_dt_or_lang.p)
 
     def datatype(self) -> Datatype:
         return Object.retain(cowl_literal_get_datatype(<CowlLiteral *>self.ptr))
@@ -563,17 +579,24 @@ cdef class Literal(Object, HasPrimitives):
         return cowl_string_to_str(c_str) if c_str else None
 
 
-def _py_to_dt_value(val: object, dt: Datatype | None) -> tuple[str, Datatype | None]:
+def _dt_value_from_py(val: object, dt: Datatype | None) -> tuple[str, Datatype | None]:
     if isinstance(val, str):
-        return val, dt
-    if isinstance(val, bool):
-        return "true" if val else "false", XSD.boolean if dt is None else dt
-    if dt is None:
-        if isinstance(val, int):
-            dt = XSD.integer
-        elif isinstance(val, float):
-            dt = XSD.double
-    return str(val), dt
+        inferred_dt = XSD.string
+    elif isinstance(val, int):
+        inferred_dt = XSD.integer
+    elif isinstance(val, float):
+        inferred_dt = XSD.double
+    elif isinstance(val, bool):
+        inferred_dt = XSD.boolean
+        val = "true" if val else "false"
+    elif isinstance(val, date | datetime):
+        if not isinstance(val, datetime):  # Check reversed as datetime is a subclass of date.
+            val = datetime(val.year, val.month, val.day)
+        inferred_dt = XSD.date_time if val.tzinfo is None else XSD.date_time_stamp
+        val = val.isoformat()
+    else:
+        inferred_dt = None
+    return _as_str(val), dt or inferred_dt
 
 
 # Class expressions
@@ -720,7 +743,7 @@ cdef class ObjectHasValue(ClassExpression):
         return Object.retain(cowl_obj_has_value_get_prop(<CowlObjHasValue *>self.ptr))
 
     def value(self) -> Individual:
-        return Object.retain(cowl_obj_has_value_get_ind(<CowlObjHasValue *>self.ptr))
+        return Object.retain(cowl_obj_has_value_get_value(<CowlObjHasValue *>self.ptr))
 
 
 cdef class ObjectCardinalityRestriction(ClassExpression):
@@ -1621,7 +1644,7 @@ cdef class _DataPropertyAssertion(Axiom):
         return Object.retain(cowl_data_prop_assert_axiom_get_subject(<CowlDataPropAssertAxiom *>self.ptr))
 
     def value(self) -> Literal:
-        return Object.retain(cowl_data_prop_assert_axiom_get_object(<CowlDataPropAssertAxiom *>self.ptr))
+        return Object.retain(cowl_data_prop_assert_axiom_get_value(<CowlDataPropAssertAxiom *>self.ptr))
 
 
 cdef class DataPropertyAssertion(_DataPropertyAssertion):

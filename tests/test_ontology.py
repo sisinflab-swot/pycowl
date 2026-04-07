@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -52,6 +53,7 @@ def test_editing() -> None:
     is_enrolled_in = onto.ObjectProperty("isEnrolledIn")
     has_supervisor = onto.ObjectProperty("hasSupervisor")
     has_age = onto.DataProperty("hasAge")
+    has_birth_date = onto.DataProperty("hasBirthDate")
     has_email = onto.DataProperty("hasEmail")
     john_doe = onto.Individual("JohnDoe")
     jane_smith = onto.Individual("JaneSmith")
@@ -80,6 +82,7 @@ def test_editing() -> None:
         has_supervisor(jane_smith, john_doe),
         has_email(john_doe, "john.doe@example.edu"),
         has_age(jane_smith, 25),
+        has_birth_date(john_doe, date(1985, 5, 15)),
     )
 
     onto.add(*axioms)

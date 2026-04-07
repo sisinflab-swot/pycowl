@@ -4,6 +4,7 @@ from collections.abc import (
     Iterable,
     MutableMapping,
 )
+from datetime import date, datetime
 from enum import IntFlag, auto
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
@@ -123,7 +124,7 @@ class IRI(Primitive, HasIRI):
     def __call__(self, value: Literal | LiteralValue) -> FacetRestriction: ...
     def as_string(self) -> str: ...
 
-type LiteralValue = str | int | float | bool
+type LiteralValue = str | int | float | bool | date | datetime
 
 class Literal(Object, HasPrimitives):
     @overload
@@ -136,7 +137,7 @@ class Literal(Object, HasPrimitives):
     def __init__(
         self,
         value: str,
-        language: str,
+        language: str | None = ...,
     ) -> None: ...
     def datatype(self) -> Datatype: ...
     def value(self) -> str: ...

@@ -36,6 +36,7 @@ def test_round_trip() -> None:
 def test_editing() -> None:
     onto = cowl.Ontology()
     onto.set_iri("http://swot.sisinflab.poliba.it/university", update_prefix=True)
+    onto.add(cowl.rdfs.comment("An ontology for university-related concepts."))
 
     person = onto.Class("Person")
     adult = onto.Class("Adult")

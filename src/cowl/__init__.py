@@ -1,6 +1,6 @@
 """Exported symbols."""
 
-from ._wrap import (
+from ._cowl import (
     IRI,
     OWL,
     RDF,

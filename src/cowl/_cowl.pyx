@@ -474,7 +474,20 @@ cdef class AnnotationProperty(Object, Entity):
         cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_annot_prop(<CowlIRI *>iri_obj.ptr)
 
-    def __call__(self, subject: AnnotationSubject, value: AnnotationValue) -> AnnotationAssertion:
+    def __call__(
+        self,
+        subject: AnnotationSubject | HasIRI | AnnotationValue | LiteralValue,
+        value: AnnotationValue | LiteralValue | None = None, \
+    ) -> AnnotationAssertion:
+        if value is None:
+            value = subject
+            subject = None
+        if not (isinstance(value, Object) and value.is_primitive()):
+            value = _as_literal(value)
+        if subject is None:
+            return Annotation(self, value)
+        if not subject.is_individual():
+            subject = subject.iri()
         return AnnotationAssertion(self, subject, value)
 
     def is_subproperty_of(self, parent: AnnotationProperty) -> SubAnnotationPropertyOf:
@@ -531,6 +544,15 @@ cdef class IRI(Object, Primitive, HasIRI):
 
     def __call__(self, value: Literal | LiteralValue, dt: Datatype | None = None) -> FacetRestriction:
         return FacetRestriction(self, _as_literal(value, dt))
+
+    def iri(self) -> IRI:
+        return self
+
+    def namespace(self) -> str:
+        return cowl_string_to_str(cowl_iri_get_ns(<CowlIRI *>self.ptr))
+
+    def remainder(self) -> str:
+        return cowl_string_to_str(cowl_iri_get_rem(<CowlIRI *>self.ptr))
 
     def as_string(self) -> str:
         cdef UString iri_str = cowl_iri_to_ustring(<CowlIRI *>self.ptr)
@@ -1020,8 +1042,6 @@ cdef class DatatypeRestriction(DataRange):
 
 
 cdef class Individual(Object, Primitive):
-    cdef dict __dict__
-
     def is_a(self, class_: ClassExpression) -> ClassAssertion:
         return ClassAssertion(class_, self)
 
@@ -2033,11 +2053,11 @@ cdef class OWL:
     prefix = "owl"
     ns = "http://www.w3.org/2002/07/owl#"
 
-    backward_compatible_with = IRI(ns, "backwardCompatibleWith")
-    deprecated = IRI(ns, "deprecated")
-    incompatible_with = IRI(ns, "incompatibleWith")
-    prior_version = IRI(ns, "priorVersion")
-    version_info = IRI(ns, "versionInfo")
+    backward_compatible_with = AnnotationProperty(IRI(ns, "backwardCompatibleWith"))
+    deprecated = AnnotationProperty(IRI(ns, "deprecated"))
+    incompatible_with = AnnotationProperty(IRI(ns, "incompatibleWith"))
+    prior_version = AnnotationProperty(IRI(ns, "priorVersion"))
+    version_info = AnnotationProperty(IRI(ns, "versionInfo"))
 
     bottom_data_property = DataProperty(IRI(ns, "bottomDataProperty"))
     bottom_object_property = ObjectProperty(IRI(ns, "bottomObjectProperty"))
@@ -2064,10 +2084,10 @@ class RDFS:
     prefix = "rdfs"
     ns = "http://www.w3.org/2000/01/rdf-schema#"
 
-    comment = IRI(ns, "comment")
-    is_defined_by = IRI(ns, "isDefinedBy")
-    label = IRI(ns, "label")
-    see_also = IRI(ns, "seeAlso")
+    comment = AnnotationProperty(IRI(ns, "comment"))
+    is_defined_by = AnnotationProperty(IRI(ns, "isDefinedBy"))
+    label = AnnotationProperty(IRI(ns, "label"))
+    see_also = AnnotationProperty(IRI(ns, "seeAlso"))
 
     literal = Datatype(IRI(ns, "Literal"))
 

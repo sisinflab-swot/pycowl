@@ -411,6 +411,8 @@ cdef extern from "cowl.h":
     CowlObjPropExp *cowl_inv_obj_prop_axiom_get_first_prop(CowlInvObjPropAxiom *axiom)
     CowlObjPropExp *cowl_inv_obj_prop_axiom_get_second_prop(CowlInvObjPropAxiom *axiom)
     CowlIRI *cowl_iri(CowlString *prefix, CowlString *suffix)
+    CowlString *cowl_iri_get_ns(CowlIRI *iri)
+    CowlString *cowl_iri_get_rem(CowlIRI *iri)
     CowlIRI *cowl_iri_from_string(UString s)
     CowlString *cowl_iri_get_ns(CowlIRI *iri)
     CowlString *cowl_iri_get_rem(CowlIRI *iri)

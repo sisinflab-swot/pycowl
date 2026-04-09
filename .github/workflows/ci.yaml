@@ -34,6 +34,10 @@ jobs:
           fi
         shell: bash
 
-      - name: Build and Run
-        run: ./bin/clean_test.sh
+      - name: Build
+        run: ./bin/clean_build.sh
+        shell: bash
+
+      - name: Run
+        run: ./bin/test.sh
         shell: bash

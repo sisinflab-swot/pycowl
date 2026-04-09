@@ -1,10 +1,10 @@
 [project]
 name = "cowl"
-description = "A Python library to work with OWL ontologies"
-version = "0.8.0"
+description = "A Python library for working with OWL 2 ontologies"
+version = "0.1.0"
 authors = [
-    { name = "Davide Loconte", email = "davide.loconte@poliba.it" },
     { name = "Ivano Bilenchi", email = "ivano.bilenchi@poliba.it" },
+    { name = "Davide Loconte", email = "davide.loconte@poliba.it" },
 ]
 license = "EPL-2.0"
 license-files = ["LICENSE"]

@@ -1,11 +1,32 @@
-name: CI pipeline
+name: Analyze, build, and test
 
 on:
   push:
     branches:
       - master
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+
+  analyze:
+    name: Analyze
+    runs-on: ${{vars.ubuntu_runner || 'ubuntu-latest'}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+          submodules: recursive
+
+      - name: Pre-commit
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install pre-commit
+          pre-commit run --from-ref=HEAD~1 --to-ref=HEAD
 
   test:
     name: Test
@@ -32,12 +53,9 @@ jobs:
             echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
             echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
           fi
-        shell: bash
 
       - name: Build
         run: ./bin/clean_build.sh
-        shell: bash
 
       - name: Run
         run: ./bin/test.sh
-        shell: bash

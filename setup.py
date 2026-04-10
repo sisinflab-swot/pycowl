@@ -1,4 +1,4 @@
-"""Setup script for building the Cowl Python bindings."""
+"""Setup script."""
 
 import os
 import shutil

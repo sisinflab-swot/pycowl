@@ -1,6 +1,6 @@
 [project]
-name = "cowl"
-description = "A Python library for working with OWL 2 ontologies"
+name = "pycowl"
+description = "A Python library for working with Web Ontology Language (OWL) ontologies"
 version = "0.1.0"
 authors = [
     { name = "Ivano Bilenchi", email = "ivano.bilenchi@poliba.it" },

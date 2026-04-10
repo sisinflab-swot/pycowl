@@ -1,0 +1,88 @@
+name: Build, test, and release
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+  build-wheels:
+    name: Build wheel cp${{ matrix.python }}-${{ matrix.platform[1] }}
+    runs-on: ${{ matrix.platform[0] }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - [windows-latest, win_amd64]
+          - [ubuntu-latest, manylinux_x86_64]
+          - [ubuntu-latest, musllinux_x86_64]
+          - [ubuntu-24.04-arm, manylinux_aarch64]
+          - [ubuntu-24.04-arm, musllinux_aarch64]
+          - [macos-latest, macosx_arm64]
+        python: [312, 313, 314, 314t]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          if [ $RUNNER_OS == 'Windows' ]; then
+            choco install winflexbison3
+          elif [ $RUNNER_OS == 'macOS' ]; then
+            brew install flex bison
+            echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
+            echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Generate readers
+        run: |
+          func_reader_dir='src/formats/functional/reader'
+          cmake -B build-readers
+          cmake --build build-readers --target cowl-functional-reader
+          mv build-readers/${func_reader_dir}/*.{h,c} ${func_reader_dir}
+        working-directory: lib/cowl
+
+      - name: Build
+        uses: pypa/cibuildwheel@v3.4.1
+        env:
+          CIBW_BUILD: cp${{ matrix.python }}-${{ matrix.platform[1] }}
+          CIBW_ENVIRONMENT: COWL_READER_FUNCTIONAL_SKIP_GENERATION=ON
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: 'pytest {project}/tests'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: cibw-wheels-cp${{ matrix.python }}-${{ matrix.platform[1] }}
+          path: wheelhouse/*.whl
+
+  release:
+    name: Release
+    needs: [build-wheels]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.whl
+          generate_release_notes: true

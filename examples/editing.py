@@ -1,5 +1,5 @@
 """
-This example demonstrates how to create and edit an ontology using PyCowl.
+This example demonstrates how to create and edit an ontology.
 """
 
 from datetime import date

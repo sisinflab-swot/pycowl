@@ -43,15 +43,9 @@ cdef extern from "cowl.h":
     ctypedef uint8_t CowlPrimitiveFlags
     CowlPrimitiveFlags COWL_PF_NONE
     CowlPrimitiveFlags COWL_PF_ALL
-    CowlPrimitiveFlags COWL_PF_CLASS
-    CowlPrimitiveFlags COWL_PF_DATATYPE
-    CowlPrimitiveFlags COWL_PF_OBJ_PROP
-    CowlPrimitiveFlags COWL_PF_DATA_PROP
-    CowlPrimitiveFlags COWL_PF_ANNOT_PROP
-    CowlPrimitiveFlags COWL_PF_NAMED_IND
-    CowlPrimitiveFlags COWL_PF_ANON_IND
-    CowlPrimitiveFlags COWL_PF_IRI
     CowlPrimitiveFlags COWL_PF_ENTITY
+    CowlPrimitiveFlags COWL_PF_IND
+    CowlPrimitiveFlags COWL_PF_PROP
 
     ctypedef uint8_t CowlPosition
     CowlPosition COWL_PS_NONE
@@ -147,45 +141,6 @@ cdef extern from "cowl.h":
     ctypedef struct UHash_CowlObjectPtr: pass
     ctypedef struct UVec_CowlObjectPtr: pass
 
-    cdef enum CowlAxiomType:
-        COWL_AT_DECL
-        COWL_AT_SUB_CLASS
-        COWL_AT_EQUIV_CLASSES
-        COWL_AT_DISJ_CLASSES
-        COWL_AT_DISJ_UNION
-        COWL_AT_SUB_OBJ_PROP
-        COWL_AT_EQUIV_OBJ_PROP
-        COWL_AT_DISJ_OBJ_PROP
-        COWL_AT_INV_OBJ_PROP
-        COWL_AT_OBJ_PROP_DOMAIN
-        COWL_AT_OBJ_PROP_RANGE
-        COWL_AT_FUNC_OBJ_PROP
-        COWL_AT_INV_FUNC_OBJ_PROP
-        COWL_AT_REFL_OBJ_PROP
-        COWL_AT_IRREFL_OBJ_PROP
-        COWL_AT_SYMM_OBJ_PROP
-        COWL_AT_ASYMM_OBJ_PROP
-        COWL_AT_TRANS_OBJ_PROP
-        COWL_AT_SUB_DATA_PROP
-        COWL_AT_EQUIV_DATA_PROP
-        COWL_AT_DISJ_DATA_PROP
-        COWL_AT_DATA_PROP_DOMAIN
-        COWL_AT_DATA_PROP_RANGE
-        COWL_AT_FUNC_DATA_PROP
-        COWL_AT_DATATYPE_DEF
-        COWL_AT_HAS_KEY
-        COWL_AT_SAME_IND
-        COWL_AT_DIFF_IND
-        COWL_AT_CLASS_ASSERT
-        COWL_AT_OBJ_PROP_ASSERT
-        COWL_AT_NEG_OBJ_PROP_ASSERT
-        COWL_AT_DATA_PROP_ASSERT
-        COWL_AT_NEG_DATA_PROP_ASSERT
-        COWL_AT_ANNOT_ASSERT
-        COWL_AT_SUB_ANNOT_PROP
-        COWL_AT_ANNOT_PROP_DOMAIN
-        COWL_AT_ANNOT_PROP_RANGE
-
     cdef enum CowlObjectType:
         COWL_OT_STRING
         COWL_OT_VECTOR
@@ -268,6 +223,10 @@ cdef extern from "cowl.h":
         COWL_OT_COUNT
         COWL_OT_FIRST_A
 
+    cdef enum CowlAxiomType:
+        COWL_AT_FIRST
+        COWL_AT_COUNT
+
     cdef enum CowlCardType:
         COWL_CT_MIN
         COWL_CT_MAX
@@ -291,6 +250,16 @@ cdef extern from "cowl.h":
     cdef enum CowlNAryType:
         COWL_NT_INTERSECT
         COWL_NT_UNION
+
+    cdef enum CowlPrimitiveType:
+        COWL_PT_CLASS
+        COWL_PT_DATATYPE
+        COWL_PT_OBJ_PROP
+        COWL_PT_DATA_PROP
+        COWL_PT_ANNOT_PROP
+        COWL_PT_NAMED_IND
+        COWL_PT_ANON_IND
+        COWL_PT_IRI
 
     cdef enum CowlQuantType:
         COWL_QT_SOME
@@ -511,6 +480,8 @@ cdef extern from "cowl.h":
     CowlIRI *cowl_prefix_map_get_iri(CowlPrefixMap *map, UString prefix, UString rem)
     CowlIRI *cowl_prefix_map_parse_short_iri(CowlPrefixMap *map, UString short_iri)
     CowlIRI *cowl_prefix_map_parse_iri(CowlPrefixMap *map, UString str)
+    CowlPrimitiveFlags cowl_primitive_flags_add_type(CowlPrimitiveFlags flags,
+        CowlPrimitiveType type)
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)
     CowlSubAnnotPropAxiom *cowl_sub_annot_prop_axiom(CowlAnnotProp *sub,

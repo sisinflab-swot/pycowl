@@ -1,8 +1,8 @@
 # type: ignore
-from collections.abc import Collection as ABCCollection, MutableMapping
+from collections.abc import Collection as ABCCollection, Iterable, MutableMapping
 from datetime import date, datetime
 from enum import IntFlag
-from typing import NoReturn, Protocol, TypeAlias, Union, overload
+from typing import Any, NoReturn, Protocol, TypeAlias, Union, overload
 from ._c_api cimport *
 
 
@@ -11,6 +11,9 @@ cowl_init()  # Trigger native library initialization on import.
 
 # Type mappings
 
+
+Types: TypeAlias = Union[type, tuple[type, ...]]
+OneOrMany: TypeAlias
 
 LiteralValue: TypeAlias = Union[str, int, float, bool, date, datetime]
 AnnotationSubject: TypeAlias = Union['IRI', 'AnonymousIndividual']
@@ -133,6 +136,25 @@ cdef inline CowlCharAxiomType _cowl_char_axiom_type(t):
     return <CowlCharAxiomType>(_cowl_type(t) - CowlObjectType.COWL_OT_A_FUNC_OBJ_PROP)
 
 
+cdef inline CowlPrimitiveType _cowl_primitive_type(t):
+    cdef CowlObjectType ot = _cowl_type(t)
+    if (ot == CowlObjectType.COWL_OT_CE_CLASS):
+        return CowlPrimitiveType.COWL_PT_CLASS
+    if (ot == CowlObjectType.COWL_OT_DR_DATATYPE):
+        return CowlPrimitiveType.COWL_PT_DATATYPE
+    if (ot == CowlObjectType.COWL_OT_OPE_OBJ_PROP):
+        return CowlPrimitiveType.COWL_PT_OBJ_PROP
+    if (ot == CowlObjectType.COWL_OT_DPE_DATA_PROP):
+        return CowlPrimitiveType.COWL_PT_DATA_PROP
+    if (ot == CowlObjectType.COWL_OT_ANNOT_PROP):
+        return CowlPrimitiveType.COWL_PT_ANNOT_PROP
+    if (ot == CowlObjectType.COWL_OT_I_NAMED):
+        return CowlPrimitiveType.COWL_PT_NAMED_IND
+    if (ot == CowlObjectType.COWL_OT_I_ANONYMOUS):
+        return CowlPrimitiveType.COWL_PT_ANON_IND
+    return CowlPrimitiveType.COWL_PT_IRI
+
+
 # C helpers
 
 
@@ -239,22 +261,39 @@ cdef inline CowlIterator cowl_iterator_from_py(func: Callable[[Object], None]):
     return iter
 
 
-cdef inline CowlAxiomFlags cowl_axiom_flags_from_py(types: Iterable[type[Axiom]] | None):
+cdef inline CowlAxiomFlags cowl_axiom_flags_from_py(types: Types | None):
     if not types:
         return COWL_AF_ALL
 
     cdef CowlAxiomFlags flags = COWL_AF_NONE
-    for t in types:
+    for t in _as_tuple(types):
         flags = cowl_axiom_flags_add_type(flags, _cowl_axiom_type(t))
     return flags
 
 
+cdef inline CowlPrimitiveFlags cowl_primitive_flags_from_py(types: Types | None):
+    if not types:
+        return COWL_PF_ALL
+
+    cdef CowlPrimitiveFlags flags = COWL_PF_NONE
+    for t in _as_tuple(types):
+        if t is Entity:
+            flags |= COWL_PF_ENTITY
+        elif t is Individual:
+            flags |= COWL_PF_IND
+        elif t is Property:
+            flags |= COWL_PF_PROP
+        else:
+            flags = cowl_primitive_flags_add_type(flags, _cowl_primitive_type(t))
+    return flags
+
+
 cdef inline CowlAxiomFilter cowl_axiom_filter_from_py(
-    types: Iterable[type[Axiom]] | None,
-    primitives: Iterable[Primitive] | None,
+    types: Types[Axiom] | None,
+    primitives: OneOrMany | None,
 ):
     cdef CowlAxiomFilter filter = cowl_axiom_filter(cowl_axiom_flags_from_py(types))
-    for p in primitives or ():
+    for p in _as_iterable(primitives):
         cowl_axiom_filter_add_primitive(&filter, (<Object>p).ptr)
     return filter
 
@@ -314,6 +353,20 @@ cdef inline str _as_str(val):
 
 cdef inline bytes _as_bytes(val):
     return _as_str(val).encode()
+
+
+cdef inline _as_iterable(val):
+    if isinstance(val, Iterable):
+        return val
+    return (val,)
+
+
+cdef inline tuple _as_tuple(val):
+    if isinstance(val, tuple):
+        return val
+    if isinstance(val, Iterable):
+        return tuple(val)
+    return (val,)
 
 
 # Enums
@@ -441,20 +494,31 @@ class HasIRI:
         return cowl_string_to_str(rem_ptr)
 
 
+cdef void _foreach_primitive(Object obj, CowlIterator *iter, types: Types | None):
+    cowl_iterate_primitives(obj.ptr, cowl_primitive_flags_from_py(types), iter)
+
+
 class HasPrimitives:
     __slots__ = ()
 
     def has_primitive(self: Object, primitive: Object) -> bool:
         return cowl_has_primitive(self.ptr, primitive.ptr)
 
-    def foreach_primitive(self: Object, func: Callable[[Primitive], None]) -> None:
+    def foreach_primitive(
+        self: Object,
+        func: Callable[[Primitive], None],
+        types: Types | None = None,
+    ) -> None:
         cdef CowlIterator iter = cowl_iterator_from_py(func)
-        cowl_iterate_primitives(self.ptr, COWL_PF_ALL, &iter)
+        _foreach_primitive(self, &iter, types)
 
-    def primitives(self: Object) -> Collection[Primitive]:
+    def primitives(
+        self: Object,
+        types: Types | None = None,
+    ) -> Collection[Primitive]:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, True)
-        cowl_iterate_primitives(self.ptr, COWL_PF_ALL, &iter)
+        _foreach_primitive(self, &iter, types)
         return Object.wrap(cowl_vector_wrap(&vec))
 
 
@@ -469,7 +533,11 @@ class Entity(Primitive, HasIRI):
         return Declaration(self)
 
 
-cdef class AnnotationProperty(Object, Entity):
+class Property(Entity):
+    __slots__ = ()
+
+
+cdef class AnnotationProperty(Object, Property):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_annot_prop(<CowlIRI *>iri_obj.ptr)
@@ -1132,7 +1200,7 @@ cdef class ObjectPropertyExpression(Object, HasPrimitives):
         return TransitiveObjectProperty(self)
 
 
-cdef class ObjectProperty(ObjectPropertyExpression, Entity):
+cdef class ObjectProperty(ObjectPropertyExpression, Property):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_obj_prop(<CowlIRI *>iri_obj.ptr)
@@ -1160,7 +1228,7 @@ cdef class ObjectPropertyChain(Collection):
 # Data property expressions
 
 
-cdef class DataProperty(Object, Entity):
+cdef class DataProperty(Object, Property):
     def __init__(self, iri: str | IRI) -> None:
         cdef IRI iri_obj = _as_iri(iri)
         self.ptr = cowl_data_prop(<CowlIRI *>iri_obj.ptr)
@@ -1890,14 +1958,12 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     cdef void _foreach_axiom(
         self,
         CowlIterator *iter,
-        types: Iterable[type[Axiom]] | None,
-        primitives: Iterable[Object] | None
+        types: Types | None,
+        primitives: OneOrMany | None
     ):
         cdef CowlOntology *onto = <CowlOntology *>self.ptr
         cdef CowlAxiomFilter filter
-
-        types = tuple(types) if types else ()
-        primitives = tuple(primitives) if primitives else ()
+        primitives = _as_iterable(primitives) if primitives else ()
 
         if not types and len(primitives) == 1:
             cowl_ontology_iterate_axioms_for_primitive(onto, (<Object>primitives[0]).ptr, iter)
@@ -1912,16 +1978,16 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def foreach_axiom(
         self,
         func: Callable[[Axiom], None],
-        types: Iterable[type[Axiom]] | None = None,
-        primitives: Iterable[Object] | None = None,
+        types: Types | None = None,
+        primitives: OneOrMany | None = None,
     ) -> None:
         cdef CowlIterator iter = cowl_iterator_from_py(func)
         self._foreach_axiom(&iter, types, primitives)
 
     def axioms(
         self,
-        types: Iterable[type[Axiom]] | None = None,
-        primitives: Iterable[Object] | None = None,
+        types: Types | None = None,
+        primitives: OneOrMany | None = None,
     ) -> Collection[Axiom]:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, True)

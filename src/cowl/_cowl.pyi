@@ -9,6 +9,9 @@ from enum import IntFlag, auto
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
 
+type Types[T] = type[T] | tuple[type[T], ...]
+type OneOrMany[T] = T | Iterable[T]
+
 # Utilities
 
 @overload
@@ -96,10 +99,14 @@ class HasPrimitives(Protocol):
     def has_primitive(self, primitive: Primitive) -> bool:
         """Return whether this object references the primitive."""
 
-    def foreach_primitive(self, func: Callable[[Primitive], None]) -> None:
+    def foreach_primitive[T: Primitive](
+        self,
+        func: Callable[[T], None],
+        types: Types[T] | None = None,
+    ) -> None:
         """Apply a function to each referenced primitive."""
 
-    def primitives(self) -> Collection[Primitive]:
+    def primitives[T: Primitive](self, types: Types[T] | None = None) -> Collection[T]:
         """Return the referenced primitives."""
 
 class PrimitiveFactory(Protocol):
@@ -211,7 +218,10 @@ class Entity(Primitive, HasIRI):
     def declare(self) -> Declaration:
         """Create a declaration axiom for this entity."""
 
-class AnnotationProperty(Entity):
+class Property(Entity):
+    """Property."""
+
+class AnnotationProperty(Property):
     """Annotation property."""
 
     def __init__(self, iri: str | IRI) -> None:
@@ -795,7 +805,7 @@ class ObjectPropertyExpression(Object, HasPrimitives):
     def is_transitive(self) -> TransitiveObjectProperty:
         """Create a transitive object property axiom."""
 
-class ObjectProperty(ObjectPropertyExpression, Entity):
+class ObjectProperty(ObjectPropertyExpression, Property):
     """Object property."""
 
     def __init__(self, iri: str | IRI) -> None:
@@ -824,7 +834,7 @@ class ObjectPropertyChain(Collection[ObjectPropertyExpression]):
 
 # Data property expressions
 
-class DataProperty(Entity):
+class DataProperty(Property):
     """Data property."""
 
     def __init__(self, iri: str | IRI) -> None:
@@ -968,7 +978,7 @@ class SubObjectPropertyOf(Axiom):
 
     def __init__(
         self,
-        child: ObjectPropertyExpression | Iterable[ObjectPropertyExpression],
+        child: OneOrMany[ObjectPropertyExpression],
         parent: ObjectPropertyExpression,
         annotations: Iterable[Annotation] | None = None,
     ) -> None:
@@ -1449,37 +1459,47 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def __contains__(self, item: Axiom | Primitive) -> bool:
         """Return whether the ontology contains the given item."""
 
-    def foreach_axiom(
+    def foreach_axiom[T: Axiom](
         self,
-        func: Callable[[Axiom], None],
-        types: Iterable[type[Axiom]] | None = None,
-        primitives: Iterable[Object] | None = None,
+        func: Callable[[T], None],
+        types: Types[T] | None = None,
+        primitives: OneOrMany[Primitive] | None = None,
     ) -> None:
         """Apply a function to each matching axiom."""
 
-    def axioms(
+    def axioms[T: Axiom](
         self,
-        types: Iterable[type[Axiom]] | None = None,
-        primitives: Iterable[Object] | None = None,
-    ) -> Collection[Axiom]:
+        types: Types[T] | None = None,
+        primitives: OneOrMany[Primitive] | None = None,
+    ) -> Collection[T]:
         """Return the matching axioms."""
 
     def foreach_related(
         self,
         primitive: Primitive,
         axiom_type: type[Axiom],
-        func: Callable[[Primitive], None],
+        func: Callable[[Object], None],
         position: Position = ...,
     ) -> None:
-        """Apply a function to each related primitive."""
+        """
+        Apply a function to each object related to the primitive via an axiom of the given type.
+
+        The `position` argument specifies which position(s) on the axiom to consider when
+        determining the related objects.
+        """
 
     def related(
         self,
         primitive: Primitive,
         axiom_type: type[Axiom],
         position: Position = ...,
-    ) -> Collection[Primitive]:
-        """Return the related primitives."""
+    ) -> Collection[Object]:
+        """
+        Return the objects that are related to the primitive via an axiom of the given type.
+
+        The `position` argument specifies which position(s) on the axiom to consider when
+        determining the related objects.
+        """
 
     def to_path(self, path: Path | str) -> None:
         """Write the ontology to a path."""

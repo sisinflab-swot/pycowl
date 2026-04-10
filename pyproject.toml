@@ -35,25 +35,22 @@ line-length = 100
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "ANN101",   # missing-type-self
-    "ANN102",   # missing-type-cls
-    "BLE001",   # blind-except
-    "D203",     # one-blank-line-before-class
-    "D212",     # multi-line-summary-first-line
-    "D418",     # overload-with-docstring
-    "PD",       # pandas
-    "PLC0414",  # useless-import-alias
-    "PLR09",    # too-many-*
-    "PYI021",   # docstring-in-stub
+    "BLE001",  # blind-except
+    "D203",    # one-blank-line-before-class
+    "D212",    # multi-line-summary-first-line
+    "D418",    # overload-with-docstring
+    "PD",      # pandas
+    "PLC0414", # useless-import-alias
+    "PLR09",   # too-many-*
+    "PYI021",  # docstring-in-stub
 ]
 isort.combine-as-imports = true
-
 [tool.ruff.lint.per-file-ignores]
 "!src/*.py" = [
-    "D",        # docstrings
-    "PLR2004",  # magic-value-comparison
-    "S101",     # assert
-    "T201",     # print
+    "D",       # docstrings
+    "PLR2004", # magic-value-comparison
+    "S101",    # assert
+    "T201",    # print
 ]
 
 [tool.setuptools.packages.find]

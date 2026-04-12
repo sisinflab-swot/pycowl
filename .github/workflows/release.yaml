@@ -11,6 +11,24 @@ defaults:
 
 jobs:
 
+  build-sdist:
+    name: Build source distribution
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Build and test
+        run: bin/build_sdist.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist-sdist
+          path: dist/*.tar.gz
+
   build-wheels:
     name: Build wheel cp${{ matrix.python }}-${{ matrix.platform[1] }}
     runs-on: ${{ matrix.platform[0] }}
@@ -61,12 +79,12 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: cibw-wheels-cp${{ matrix.python }}-${{ matrix.platform[1] }}
+          name: dist-wheels-cp${{ matrix.python }}-${{ matrix.platform[1] }}
           path: wheelhouse/*.whl
 
   release:
     name: Release
-    needs: [build-wheels]
+    needs: [build-sdist, build-wheels]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
 
@@ -77,12 +95,12 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
-          pattern: cibw-*
+          pattern: dist-*
           path: dist
           merge-multiple: true
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.whl
+          files: dist/*
           generate_release_notes: true

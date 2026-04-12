@@ -1,6 +1,6 @@
 """Exported symbols."""
 
-from ._cowl import (
+from ._cowl import (  # pyright: ignore[reportMissingModuleSource]
     IRI,
     OWL,
     RDF,
@@ -108,6 +108,11 @@ from ._cowl import (
     chain,
     one_of,
 )
+from ._version import (
+    __commit_id__,
+    __version__,
+    __version_tuple__,
+)
 
 owl = OWL
 rdf = RDF
@@ -211,6 +216,9 @@ __all__ = [
     "SubObjectPropertyOf",
     "SymmetricObjectProperty",
     "TransitiveObjectProperty",
+    "__commit_id__",
+    "__version__",
+    "__version_tuple__",
     "all_different",
     "all_disjoint",
     "all_equivalent",

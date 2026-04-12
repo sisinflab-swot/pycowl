@@ -249,8 +249,4 @@ $RECYCLE.BIN/
 # Project-specific
 .vscode/
 !/lib
-*.c
-*.so
-*.dylib
-*.dll
-*.lib
+_version.py

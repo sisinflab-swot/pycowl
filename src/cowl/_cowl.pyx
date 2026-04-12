@@ -2,7 +2,7 @@
 from collections.abc import Collection as ABCCollection, Iterable, MutableMapping
 from datetime import date, datetime
 from enum import IntFlag
-from typing import Any, NoReturn, Protocol, TypeAlias, Union, overload
+from typing import NoReturn, Protocol, TypeAlias, Union, overload
 from ._c_api cimport *
 
 

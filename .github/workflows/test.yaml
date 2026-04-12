@@ -55,7 +55,7 @@ jobs:
           fi
 
       - name: Build
-        run: ./bin/clean_build.sh
+        run: bin/install.sh
 
       - name: Run
-        run: ./bin/test.sh
+        run: bin/test.sh

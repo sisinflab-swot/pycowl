@@ -1,7 +1,6 @@
 [project]
 name = "pycowl"
 description = "A Python library for working with Web Ontology Language (OWL) ontologies"
-version = "0.1.0"
 authors = [
     { name = "Ivano Bilenchi", email = "ivano.bilenchi@poliba.it" },
     { name = "Davide Loconte", email = "davide.loconte@poliba.it" },
@@ -15,6 +14,7 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = []
+dynamic = ["version"]
 
 [project.optional-dependencies]
 dev = ["pytest"]
@@ -23,8 +23,18 @@ dev = ["pytest"]
 Homepage = "https://swot.sisinflab.poliba.it/pycowl"
 
 [build-system]
-requires = ["setuptools>=61.0.0", "cython"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core", "cython", "cython-cmake"]
+build-backend = "scikit_build_core.build"
+
+[tool.scikit-build]
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+build-dir = "build/{wheel_tag}"
+sdist.include = ["src/cowl/_version.py"]
+wheel.packages = ["src/cowl"]
+wheel.exclude = ["**.pyx"]
+
+[tool.setuptools_scm]
+version_file = "src/cowl/_version.py"
 
 [tool.cython-lint]
 max-line-length = 100
@@ -45,6 +55,7 @@ ignore = [
     "PYI021",  # docstring-in-stub
 ]
 isort.combine-as-imports = true
+
 [tool.ruff.lint.per-file-ignores]
 "!src/*.py" = [
     "D",       # docstrings
@@ -52,12 +63,3 @@ isort.combine-as-imports = true
     "S101",    # assert
     "T201",    # print
 ]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[tool.setuptools.package-data]
-cowl = ["*.so", "*.dylib", "*.dll"]
-
-[tool.setuptools.exclude-package-data]
-cowl = ["*.c"]

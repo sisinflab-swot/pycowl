@@ -90,6 +90,7 @@ jobs:
 
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Download artifacts
@@ -104,3 +105,8 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{vars.PYPI_REPO_URL}}

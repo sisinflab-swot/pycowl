@@ -20,7 +20,10 @@ dynamic = ["version"]
 dev = ["pytest"]
 
 [project.urls]
-Homepage = "https://swot.sisinflab.poliba.it/pycowl"
+Homepage = "https://github.com/sisinflab-swot/pycowl"
+Repository = "https://github.com/sisinflab-swot/pycowl"
+Download = "https://github.com/sisinflab-swot/pycowl/releases"
+Changelog = "https://github.com/sisinflab-swot/pycowl/blob/master/CHANGELOG.md"
 
 [build-system]
 requires = ["scikit-build-core", "cython", "cython-cmake"]

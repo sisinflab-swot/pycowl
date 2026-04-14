@@ -349,17 +349,20 @@ class ClassExpression(Object, HasPrimitives):
     def is_a(self, parent: ClassExpression) -> SubClassOf:
         """Create a subclass axiom."""
 
-    def is_not_a(self, other: ClassExpression) -> DisjointClasses:
-        """Create a disjoint classes axiom."""
-
     def is_subclass_of(self, parent: ClassExpression) -> SubClassOf:
         """Create a subclass axiom."""
 
-    def is_equivalent_to(self, *args: ClassExpression) -> EquivalentClasses:
-        """Create an equivalent classes axiom."""
+    def is_not_a(self, other: ClassExpression) -> DisjointClasses:
+        """Create a disjoint classes axiom."""
 
     def is_disjoint_with(self, *args: ClassExpression) -> DisjointClasses:
         """Create a disjoint classes axiom."""
+
+    def is_same_as(self, *args: ClassExpression) -> EquivalentClasses:
+        """Create an equivalent classes axiom."""
+
+    def is_equivalent_to(self, *args: ClassExpression) -> EquivalentClasses:
+        """Create an equivalent classes axiom."""
 
     def has_key(self, *args: ObjectPropertyExpression | DataProperty) -> HasKey:
         """Create a key axiom."""

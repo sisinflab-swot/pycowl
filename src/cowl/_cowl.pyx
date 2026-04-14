@@ -725,14 +725,17 @@ cdef class ClassExpression(Object, HasPrimitives):
     def is_a(self, parent: ClassExpression) -> SubClassOf:
         return SubClassOf(self, parent)
 
-    def is_not_a(self, other: ClassExpression) -> DisjointClasses:
-        return DisjointClasses(self, other)
-
     def is_subclass_of(self, parent: ClassExpression) -> SubClassOf:
         return SubClassOf(self, parent)
 
+    def is_same_as(self, *args: ClassExpression) -> EquivalentClasses:
+        return EquivalentClasses(self, *args)
+
     def is_equivalent_to(self, *args: ClassExpression) -> EquivalentClasses:
         return EquivalentClasses(self, *args)
+
+    def is_not_a(self, other: ClassExpression) -> DisjointClasses:
+        return DisjointClasses(self, other)
 
     def is_disjoint_with(self, *args: ClassExpression) -> DisjointClasses:
         return DisjointClasses(self, *args)

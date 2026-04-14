@@ -64,7 +64,7 @@ def test_editing() -> None:
         student.is_a(adult.that(is_enrolled_in.some(course))),
         professor.is_a(adult.that(teaches.some(course))),
         student.is_not_a(professor),
-        graduate_student.is_equivalent_to(student.that(has_supervisor.some(professor))),
+        graduate_student.is_same_as(student.that(has_supervisor.some(professor))),
         undergraduate_student.is_a(student & ~graduate_student),
         (student | professor).is_subclass_of(university_member),
         university_member.has_key(has_email),

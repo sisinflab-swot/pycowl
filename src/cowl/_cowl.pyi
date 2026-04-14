@@ -99,15 +99,25 @@ class HasPrimitives(Protocol):
     def has_primitive(self, primitive: Primitive) -> bool:
         """Return whether this object references the primitive."""
 
+    @overload
+    def foreach_primitive(self, func: Callable[[Primitive], None]) -> None:
+        """Apply a function to each referenced primitive."""
+
+    @overload
     def foreach_primitive[T: Primitive](
         self,
         func: Callable[[T], None],
-        types: Types[T] | None = None,
+        types: Types[T],
     ) -> None:
-        """Apply a function to each referenced primitive."""
+        """Apply a function to each referenced primitive of the given types."""
 
-    def primitives[T: Primitive](self, types: Types[T] | None = None) -> Collection[T]:
+    @overload
+    def primitives(self) -> Collection[Primitive]:
         """Return the referenced primitives."""
+
+    @overload
+    def primitives[T: Primitive](self, types: Types[T]) -> Collection[T]:
+        """Return the referenced primitives of the given types."""
 
 class PrimitiveFactory(Protocol):
     """
@@ -1462,20 +1472,34 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def __contains__(self, item: Axiom | Primitive) -> bool:
         """Return whether the ontology contains the given item."""
 
+    @overload
+    def foreach_axiom(
+        self,
+        func: Callable[[Axiom], None],
+        primitives: OneOrMany[Primitive] | None = None,
+    ) -> None:
+        """Apply a function to each axiom that references all the primitives."""
+
+    @overload
     def foreach_axiom[T: Axiom](
         self,
         func: Callable[[T], None],
-        types: Types[T] | None = None,
+        types: Types[T],
         primitives: OneOrMany[Primitive] | None = None,
     ) -> None:
-        """Apply a function to each matching axiom."""
+        """Apply a function to each axiom of the given types that references all the primitives."""
 
+    @overload
+    def axioms(self, primitives: OneOrMany[Primitive] | None = None) -> Collection[Axiom]:
+        """Return the axioms that reference all the primitives."""
+
+    @overload
     def axioms[T: Axiom](
         self,
-        types: Types[T] | None = None,
+        types: Types[T],
         primitives: OneOrMany[Primitive] | None = None,
     ) -> Collection[T]:
-        """Return the matching axioms."""
+        """Return the axioms of the given types that reference all the primitives."""
 
     def foreach_related(
         self,

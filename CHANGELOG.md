@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
 
+### Fixed
+
+- Improved type annotations for generic methods.
+
 
 ## [0.1.0] - 2026-04-13
 

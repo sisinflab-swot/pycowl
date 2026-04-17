@@ -2009,9 +2009,9 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     def foreach_related(
         self,
+        func: Callable[[Object], None],
         primitive: Object,
         axiom_type: type[Axiom],
-        func: Callable[[Object], None],
         position: Position = Position.ANY,
     ) -> None:
         cdef CowlIterator iter = cowl_iterator_from_py(func)

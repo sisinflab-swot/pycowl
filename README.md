@@ -21,7 +21,7 @@ Copyright © 2026 [SisInf Lab][swot], [Polytechnic University of Bari][poliba]
 PyCowl is distributed under the [Eclipse Public License, Version 2.0][epl2].
 
 [epl2]: https://www.eclipse.org/legal/epl-2.0
-[examples]: https://github.com/sisinflab-swot/pycowl/blob/master/examples
+[examples]: https://github.com/sisinflab-swot/pycowl/blob/stable/examples
 [poliba]: http://www.poliba.it
-[stub]: https://github.com/sisinflab-swot/pycowl/blob/master/src/cowl/_cowl.pyi
+[stub]: https://github.com/sisinflab-swot/pycowl/blob/stable/src/cowl/_cowl.pyi
 [swot]: http://swot.sisinflab.poliba.it

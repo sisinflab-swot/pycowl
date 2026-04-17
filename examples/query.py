@@ -38,11 +38,11 @@ def main() -> None:
     # Retrieve and print all superclasses of the "CheeseTopping" class.
     print("\nSuperclasses of 'CheeseTopping':")
     cheese_topping = onto.Class("CheeseTopping")
-    onto.foreach_related(cheese_topping, cowl.SubClassOf, print, position=cowl.Position.RIGHT)
+    onto.foreach_related(print, cheese_topping, cowl.SubClassOf, cowl.Position.RIGHT)
 
     # Retrieve and print all subclasses of the "CheeseTopping" class.
     print("\nSubclasses of 'CheeseTopping':")
-    onto.foreach_related(cheese_topping, cowl.SubClassOf, print, position=cowl.Position.LEFT)
+    onto.foreach_related(print, cheese_topping, cowl.SubClassOf, cowl.Position.LEFT)
 
     # Each of the above queries can also return an iterable collection of constructs.
     # We will use this feature to print the toppings of the "Parmense" pizza.
@@ -51,7 +51,7 @@ def main() -> None:
     parmense = onto.Class("Parmense")
     has_topping = onto.ObjectProperty("hasTopping")
 
-    for superclass in onto.related(parmense, cowl.SubClassOf, position=cowl.Position.RIGHT):
+    for superclass in onto.related(parmense, cowl.SubClassOf, cowl.Position.RIGHT):
         if not isinstance(superclass, cowl.ObjectSomeValuesFrom):
             continue
         if superclass.property_() == has_topping:

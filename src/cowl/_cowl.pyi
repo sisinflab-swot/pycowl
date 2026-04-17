@@ -1503,9 +1503,9 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     def foreach_related(
         self,
+        func: Callable[[Object], None],
         primitive: Primitive,
         axiom_type: type[Axiom],
-        func: Callable[[Object], None],
         position: Position = ...,
     ) -> None:
         """

@@ -52,7 +52,7 @@ def main() -> None:
         # No student is a professor.
         student.is_not_a(professor),
         # A graduate student is a student who has at least one supervisor.
-        graduate_student.is_equivalent_to(student.that(has_supervisor.some(professor))),
+        graduate_student.is_same_as(student.that(has_supervisor.some(professor))),
         # An undergraduate student is not a graduate student.
         undergraduate_student.is_a(student & ~graduate_student),
         # Every student or professor is a university member.

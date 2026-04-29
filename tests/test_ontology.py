@@ -81,7 +81,7 @@ def test_editing() -> None:
         has_age.has_domain(person),
         has_age.has_range(age),
         has_contact.has_domain(university_member),
-        has_contact.has_range(email | phone_number),
+        has_contact.has_range(cowl.union_of(email, phone_number)),
         john_doe.is_a(professor),
         jane_smith.is_a(graduate_student),
         has_supervisor(jane_smith, john_doe),

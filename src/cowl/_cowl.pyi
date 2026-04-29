@@ -15,6 +15,22 @@ type OneOrMany[T] = T | Iterable[T]
 # Utilities
 
 @overload
+def intersection_of(*args: ClassExpression) -> ObjectIntersectionOf:
+    """Create an intersection class expression."""
+
+@overload
+def intersection_of(*args: DataRange) -> DataIntersectionOf:
+    """Create an intersection data range."""
+
+@overload
+def union_of(*args: ClassExpression) -> ObjectUnionOf:
+    """Create a union class expression."""
+
+@overload
+def union_of(*args: DataRange) -> DataUnionOf:
+    """Create a union data range."""
+
+@overload
 def one_of(*args: Individual) -> ObjectOneOf:
     """Create an enumeration of individuals."""
 

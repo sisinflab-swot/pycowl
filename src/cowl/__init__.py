@@ -106,7 +106,9 @@ from ._cowl import (  # pyright: ignore[reportMissingModuleSource]
     all_equivalent,
     all_same,
     chain,
+    intersection_of,
     one_of,
+    union_of,
 )
 from ._version import (
     __commit_id__,
@@ -224,9 +226,11 @@ __all__ = [
     "all_equivalent",
     "all_same",
     "chain",
+    "intersection_of",
     "one_of",
     "owl",
     "rdf",
     "rdfs",
+    "union_of",
     "xsd",
 ]

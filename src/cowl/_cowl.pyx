@@ -301,6 +301,18 @@ cdef inline CowlAxiomFilter cowl_axiom_filter_from_py(
 # Utilities
 
 
+def intersection_of(*args: ClassExpression | DataRange) -> ObjectIntersectionOf | DataIntersectionOf:
+    if isinstance(args[0], ClassExpression):
+        return ObjectIntersectionOf(*(op for arg in args for op in ObjectIntersectionOf.as_operands(arg)))
+    return DataIntersectionOf(*(op for arg in args for op in DataIntersectionOf.as_operands(arg)))
+
+
+def union_of(*args: ClassExpression | DataRange) -> ObjectUnionOf | DataUnionOf:
+    if isinstance(args[0], ClassExpression):
+        return ObjectUnionOf(*(op for arg in args for op in ObjectUnionOf.as_operands(arg)))
+    return DataUnionOf(*(op for arg in args for op in DataUnionOf.as_operands(arg)))
+
+
 def one_of(*args: Individual | Literal | LiteralValue) -> ObjectOneOf | DataOneOf:
     if isinstance(args[0], Individual):
         return ObjectOneOf(*args)

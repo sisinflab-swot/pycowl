@@ -11,9 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
+- `DataRange.that` fluent API.
 
 ### Fixed
 
+- Implemented `__and__` and `__or__` for `DataRange`.
 - Improved type annotations for generic methods.
 
 

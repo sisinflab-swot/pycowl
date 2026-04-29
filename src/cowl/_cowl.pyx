@@ -698,28 +698,23 @@ cdef class ClassExpression(Object, HasPrimitives):
 
     def __and__(self, other: ClassExpression) -> ObjectIntersectionOf:
         return ObjectIntersectionOf(
-            *self._as_ops(ObjectIntersectionOf),
-            *other._as_ops(ObjectIntersectionOf)
+            *ObjectIntersectionOf.as_operands(self),
+            *ObjectIntersectionOf.as_operands(other)
         )
 
     def __or__(self, other: ClassExpression) -> ObjectUnionOf:
         return ObjectUnionOf(
-            *self._as_ops(ObjectUnionOf),
-            *other._as_ops(ObjectUnionOf)
+            *ObjectUnionOf.as_operands(self),
+            *ObjectUnionOf.as_operands(other)
         )
 
     def __invert__(self) -> ClassExpression:
         return self.operand() if isinstance(self, ObjectComplementOf) else ObjectComplementOf(self)
 
-    def _as_ops(self, kind: Type[NAryBooleanClassExpression]) -> Iterable[ClassExpression]:
-        if isinstance(self, kind):
-            return self.operands()
-        return (self,)
-
     def that(self, *args: ClassExpression) -> ObjectIntersectionOf:
         return ObjectIntersectionOf(
-            *self._as_ops(ObjectIntersectionOf),
-            *(op for arg in args for op in arg._as_ops(ObjectIntersectionOf))
+            *ObjectIntersectionOf.as_operands(self),
+            *(op for arg in args for op in ObjectIntersectionOf.as_operands(arg))
         )
 
     def is_a(self, parent: ClassExpression) -> SubClassOf:
@@ -769,11 +764,19 @@ cdef class NAryClassExpression(ClassExpression):
 
 
 cdef class ObjectIntersectionOf(NAryClassExpression):
-    pass
+    @staticmethod
+    def as_operands(cls_exp: ClassExpression) -> Iterable[ClassExpression]:
+        if isinstance(cls_exp, ObjectIntersectionOf):
+            return cls_exp.operands()
+        return (cls_exp,)
 
 
 cdef class ObjectUnionOf(NAryClassExpression):
-    pass
+    @staticmethod
+    def as_operands(cls_exp: ClassExpression) -> Iterable[ClassExpression]:
+        if isinstance(cls_exp, ObjectUnionOf):
+            return cls_exp.operands()
+        return (cls_exp,)
 
 
 cdef class ObjectComplementOf(ClassExpression):
@@ -961,8 +964,26 @@ cdef class DataExactCardinality(DataCardinalityRestriction):
 
 
 cdef class DataRange(Object, HasPrimitives):
+    def __and__(self, other: DataRange) -> DataIntersectionOf:
+        return DataIntersectionOf(
+            *DataIntersectionOf.as_operands(self),
+            *DataIntersectionOf.as_operands(other)
+        )
+
+    def __or__(self, other: DataRange) -> DataUnionOf:
+        return DataUnionOf(
+            *DataUnionOf.as_operands(self),
+            *DataUnionOf.as_operands(other)
+        )
+
     def __invert__(self) -> DataRange:
         return self.operand() if isinstance(self, DataComplementOf) else DataComplementOf(self)
+
+    def that(self, *args: DataRange) -> DataIntersectionOf:
+        return DataIntersectionOf(
+            *DataIntersectionOf.as_operands(self),
+            *(op for arg in args for op in DataIntersectionOf.as_operands(arg))
+        )
 
 
 cdef class Datatype(DataRange, Entity):
@@ -1022,12 +1043,19 @@ cdef class NAryDataRange(DataRange):
 
 
 cdef class DataIntersectionOf(NAryDataRange):
-    pass
+    @staticmethod
+    def as_operands(data_range: DataRange) -> Iterable[DataRange]:
+        if isinstance(data_range, DataIntersectionOf):
+            return data_range.operands()
+        return (data_range,)
 
 
 cdef class DataUnionOf(NAryDataRange):
-    pass
-
+    @staticmethod
+    def as_operands(data_range: DataRange) -> Iterable[DataRange]:
+        if isinstance(data_range, DataUnionOf):
+            return data_range.operands()
+        return (data_range,)
 
 cdef class DataComplementOf(DataRange):
     def __init__(self, operand: DataRange) -> None:

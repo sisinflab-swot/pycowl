@@ -572,6 +572,9 @@ class DataRange(Object, HasPrimitives):
     def __invert__(self: DataRange) -> DataRange:
         """Create a complement data range."""
 
+    def that(self, *args: DataRange) -> DataIntersectionOf:
+        """Create an intersection data range."""
+
 class Datatype(DataRange, Entity):
     """Datatype."""
 

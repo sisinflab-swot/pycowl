@@ -48,6 +48,7 @@ def test_editing() -> None:
     undergraduate_student = onto.Class("UndergraduateStudent")
     age = onto.Datatype("Age")
     email = onto.Datatype("Email")
+    phone_number = onto.Datatype("PhoneNumber")
     teaches = onto.ObjectProperty("teaches")
     is_taught_by = onto.ObjectProperty("isTaughtBy")
     is_teacher_of = onto.ObjectProperty("isTeacherOf")
@@ -56,6 +57,7 @@ def test_editing() -> None:
     has_age = onto.DataProperty("hasAge")
     has_birth_date = onto.DataProperty("hasBirthDate")
     has_email = onto.DataProperty("hasEmail")
+    has_contact = onto.DataProperty("hasContact")
     john_doe = onto.Individual("JohnDoe")
     jane_smith = onto.Individual("JaneSmith")
 
@@ -78,6 +80,8 @@ def test_editing() -> None:
         email.is_defined_as(cowl.xsd.string.that_has(pattern=r"^[\w\.-]+@[\w\.-]+\.\w+$")),
         has_age.has_domain(person),
         has_age.has_range(age),
+        has_contact.has_domain(university_member),
+        has_contact.has_range(email | phone_number),
         john_doe.is_a(professor),
         jane_smith.is_a(graduate_student),
         has_supervisor(jane_smith, john_doe),

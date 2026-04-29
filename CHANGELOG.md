@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
 - `DataRange.that` fluent API.
 - `intersection_of` and `union_of` utility functions.
+- Type guard functions (`is_entity`, `is_primitive`, `is_axiom`, etc.).
 
 ### Fixed
 

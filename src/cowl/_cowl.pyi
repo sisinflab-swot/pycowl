@@ -1,3 +1,4 @@
+import sys
 from collections.abc import (
     Callable,
     Collection as ABCCollection,
@@ -8,6 +9,11 @@ from datetime import date, datetime
 from enum import IntFlag, auto
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
+
+if sys.version_info >= (3, 13):
+    from typing import TypeIs
+else:
+    from typing_extensions import TypeIs
 
 type Types[T] = type[T] | tuple[type[T], ...]
 type OneOrMany[T] = T | Iterable[T]
@@ -70,6 +76,30 @@ def all_different(*args: Individual) -> DifferentIndividuals:
 
 def chain(*args: ObjectPropertyExpression) -> ObjectPropertyChain:
     """Create an object property chain."""
+
+def is_entity(obj: Object) -> TypeIs[Entity]:
+    """Return whether the object is an entity."""
+
+def is_primitive(obj: Object) -> TypeIs[Primitive]:
+    """Return whether the object is primitive."""
+
+def is_axiom(obj: Object) -> TypeIs[Axiom]:
+    """Return whether the object is an axiom."""
+
+def is_class_expression(obj: Object) -> TypeIs[ClassExpression]:
+    """Return whether the object is a class expression."""
+
+def is_data_range(obj: Object) -> TypeIs[DataRange]:
+    """Return whether the object is a data range."""
+
+def is_object_property_expression(obj: Object) -> TypeIs[ObjectPropertyExpression]:
+    """Return whether the object is an object property expression."""
+
+def is_data_property_expression(obj: Object) -> TypeIs[DataProperty]:
+    """Return whether the object is a data property expression."""
+
+def is_individual(obj: Object) -> TypeIs[Individual]:
+    """Return whether the object is an individual."""
 
 # Protocols
 

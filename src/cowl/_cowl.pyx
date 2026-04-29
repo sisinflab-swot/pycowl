@@ -351,6 +351,38 @@ def chain(*args: ObjectPropertyExpression) -> ObjectPropertyChain:
     return ObjectPropertyChain(*args)
 
 
+def is_entity(obj: Object) -> bool:
+    return obj.is_entity()
+
+
+def is_primitive(obj: Object) -> bool:
+    return obj.is_primitive()
+
+
+def is_axiom(obj: Object) -> bool:
+    return obj.is_axiom()
+
+
+def is_class_expression(obj: Object) -> bool:
+    return obj.is_class_expression()
+
+
+def is_data_range(obj: Object) -> bool:
+    return obj.is_data_range()
+
+
+def is_object_property_expression(obj: Object) -> bool:
+    return obj.is_object_property_expression()
+
+
+def is_data_property_expression(obj: Object) -> bool:
+    return obj.is_data_property_expression()
+
+
+def is_individual(obj: Object) -> bool:
+    return obj.is_individual()
+
+
 cdef inline Literal _as_literal(val: Literal | LiteralValue, dt: Datatype | None = None):
     return val if isinstance(val, Literal) else Literal(val, dt)
 
@@ -368,9 +400,7 @@ cdef inline bytes _as_bytes(val):
 
 
 cdef inline _as_iterable(val):
-    if isinstance(val, Iterable):
-        return val
-    return (val,)
+    return val if isinstance(val, Iterable) else (val,)
 
 
 cdef inline tuple _as_tuple(val):
@@ -706,7 +736,7 @@ def _dt_value_from_py(val: object, dt: Datatype | None) -> tuple[str, Datatype |
 
 cdef class ClassExpression(Object, HasPrimitives):
     def __call__(self, arg: ClassExpression | Individual) -> SubClassOf | ClassAssertion:
-        return ClassAssertion(self, arg) if isinstance(arg, Individual) else SubClassOf(self, arg)
+        return ClassAssertion(self, arg) if arg.is_individual() else SubClassOf(self, arg)
 
     def __and__(self, other: ClassExpression) -> ObjectIntersectionOf:
         return ObjectIntersectionOf(
@@ -748,8 +778,8 @@ cdef class ClassExpression(Object, HasPrimitives):
         return DisjointClasses(self, *args)
 
     def has_key(self, *args: ObjectPropertyExpression | DataProperty) -> HasKey:
-        obj_props = (p for p in args if isinstance(p, ObjectPropertyExpression))
-        data_props = (p for p in args if isinstance(p, DataProperty))
+        obj_props = (p for p in args if p.is_object_property_expression())
+        data_props = (p for p in args if p.is_data_property_expression())
         return HasKey(self, obj_props, data_props)
 
 
@@ -1406,7 +1436,7 @@ cdef class SubObjectPropertyOf(Axiom):
     ) -> None:
         cdef Ptr annot = cowl_vector_from_py(annotations)
         cdef Ptr prop_vec
-        if isinstance(child, ObjectPropertyExpression):
+        if child.is_object_property_expression():
             self.ptr = cowl_sub_obj_prop_axiom((<ObjectPropertyExpression>child).ptr,
                                                parent.ptr, <CowlVector *>annot.p)
         else:

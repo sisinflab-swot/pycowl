@@ -714,13 +714,13 @@ cdef class Literal(Object, HasPrimitives):
 def _dt_value_from_py(val: object, dt: Datatype | None) -> tuple[str, Datatype | None]:
     if isinstance(val, str):
         inferred_dt = XSD.string
+    elif isinstance(val, bool):
+        inferred_dt = XSD.boolean
+        val = "true" if val else "false"
     elif isinstance(val, int):
         inferred_dt = XSD.integer
     elif isinstance(val, float):
         inferred_dt = XSD.double
-    elif isinstance(val, bool):
-        inferred_dt = XSD.boolean
-        val = "true" if val else "false"
     elif isinstance(val, date | datetime):
         if not isinstance(val, datetime):  # Check reversed as datetime is a subclass of date.
             val = datetime(val.year, val.month, val.day)

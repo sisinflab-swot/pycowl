@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Implemented `__and__` and `__or__` for `DataRange`.
 - `bool` values interpreted as `xsd:integer` literals.
+- Equality method accepting only Self for `Datatype` and `DatatypeRestriction`.
 - Improved type annotations for generic methods.
 
 

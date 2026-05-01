@@ -1042,7 +1042,7 @@ cdef class Datatype(DataRange, Entity):
     def __hash__(self) -> int:
         return super().__hash__()
 
-    def __eq__(self, other: Datatype) -> bool:
+    def __eq__(self, other: Object) -> bool:
         return super().__eq__(other)
 
     def __le__(self, val: LiteralValue) -> DatatypeRestriction:
@@ -1146,7 +1146,7 @@ cdef class DatatypeRestriction(DataRange):
     def __hash__(self) -> int:
         return super().__hash__()
 
-    def __eq__(self, other: DatatypeRestriction) -> bool:
+    def __eq__(self, other: Object) -> bool:
         return super().__eq__(other)
 
     def __le__(self, val: LiteralValue) -> DatatypeRestriction:

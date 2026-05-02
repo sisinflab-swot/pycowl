@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
 - `DataRange.that` fluent API.
 - `intersection_of` and `union_of` utility functions.
+- `CowlOntology.axiom_count` and `CowlOntology.primitive_count`.
 - Type guard functions (`is_entity`, `is_primitive`, `is_axiom`, etc.).
 
 ### Fixed
@@ -33,5 +34,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Read and write support for the OWL 2 Functional syntax.
 
 
-[unreleased]: https://github.com/sisinflab-swot/pycowl/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/sisinflab-swot/pycowl/compare/stable...HEAD
 [0.1.0]: https://github.com/sisinflab-swot/pycowl/compare/base...v0.1.0

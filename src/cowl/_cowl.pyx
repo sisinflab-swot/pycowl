@@ -1988,6 +1988,9 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def __init__(self) -> None:
         self.ptr = cowl_ontology()
 
+    def __len__(self) -> int:
+        return self.axiom_count()
+
     def __contains__(self, obj: Object) -> bool:
         if obj.is_axiom():
             return cowl_ontology_has_axiom(<CowlOntology *>self.ptr, obj.ptr)
@@ -2002,6 +2005,18 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         cowl_ontology_to_stream(<CowlOntology *>self.ptr, &stream)
         uostream_deinit(&stream)
         return ustrbuf_to_str(&buf)
+
+    def axiom_count(self, arg: Types | Primitive | None = None) -> int:
+        cdef CowlOntology *onto = <CowlOntology *>self.ptr
+        if arg is None:
+            return cowl_ontology_axiom_count(onto)
+        if isinstance(arg, Primitive):
+            return cowl_ontology_axiom_count_for_primitive(onto, (<Object>arg).ptr)
+        return cowl_ontology_axiom_count_for_types(onto, cowl_axiom_flags_from_py(arg))
+
+    def primitive_count(self, types: Types | None = None) -> int:
+        cdef CowlOntology *onto = <CowlOntology *>self.ptr
+        return cowl_ontology_primitives_count(onto, cowl_primitive_flags_from_py(types))
 
     def IRI(self, iri: str) -> IRI:
         return self.prefix_map.IRI(iri)

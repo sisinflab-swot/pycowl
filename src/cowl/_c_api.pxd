@@ -449,6 +449,9 @@ cdef extern from "cowl.h":
     cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     cowl_ret cowl_ontology_add_import(CowlOntology *onto, CowlIRI *iri)
     CowlOntology *cowl_ontology_at_path(UString path)
+    int cowl_ontology_axiom_count(CowlOntology *onto)
+    int cowl_ontology_axiom_count_for_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
+    int cowl_ontology_axiom_count_for_types(CowlOntology *onto, CowlAxiomFlags types)
     CowlPrefixMap *cowl_ontology_get_prefix_map(CowlOntology *onto)
     CowlIRI *cowl_ontology_get_version(CowlOntology *onto)
     bint cowl_ontology_has_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
@@ -462,6 +465,7 @@ cdef extern from "cowl.h":
         CowlAxiomFilter *filter, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_related(CowlOntology *onto, CowlAnyPrimitive *primitive,
         CowlAxiomType type, CowlPosition position, CowlIterator *iter)
+    int cowl_ontology_primitives_count(CowlOntology *onto, CowlPrimitiveFlags flags)
     bint cowl_ontology_remove_annot(CowlOntology *onto, CowlAnnotation *annot)
     bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     bint cowl_ontology_remove_import(CowlOntology *onto, CowlIRI *iri)

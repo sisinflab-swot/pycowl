@@ -92,6 +92,16 @@ def test_editing() -> None:
 
     onto.add(*axioms)
 
+    assert len(onto) == len(axioms)
+    assert onto.axiom_count() == len(axioms)
+    assert onto.axiom_count((cowl.SubClassOf, cowl.ClassAssertion)) == sum(
+        1 for ax in axioms if isinstance(ax, (cowl.SubClassOf, cowl.ClassAssertion))
+    )
+    assert onto.axiom_count(student) == sum(1 for a in axioms if a.has_primitive(student))
+    assert onto.primitive_count(cowl.Individual) == len(
+        {p for a in axioms for p in a.primitives(cowl.Individual)},
+    )
+
     for axiom in axioms:
         assert axiom in onto
         assert axiom in onto.axioms()

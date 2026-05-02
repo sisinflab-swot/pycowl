@@ -1521,6 +1521,20 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def __contains__(self, item: Axiom | Primitive) -> bool:
         """Return whether the ontology contains the given item."""
 
+    def __len__(self) -> int:
+        """Return the number of axioms in the ontology."""
+
+    @overload
+    def axiom_count(self, primitive: Primitive) -> int:
+        """Return the number of axioms that reference the primitive."""
+
+    @overload
+    def axiom_count(self, types: Types[Axiom] | None = None) -> int:
+        """Return the number of axioms of the given types in the ontology."""
+
+    def primitive_count(self, types: Types[Primitive] | None = None) -> int:
+        """Return the number of primitives of the given types in the ontology."""
+
     @overload
     def foreach_axiom(
         self,

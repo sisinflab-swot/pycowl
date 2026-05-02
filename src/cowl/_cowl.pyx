@@ -2,6 +2,8 @@
 from collections.abc import Collection as ABCCollection, Iterable, MutableMapping
 from datetime import date, datetime
 from enum import IntFlag
+from io import IOBase
+from libc.string cimport memcpy
 from typing import NoReturn, Protocol, TypeAlias, Union, overload
 from ._c_api cimport *
 
@@ -210,6 +212,56 @@ cdef str ustrbuf_to_str(UStrBuf *buf, bool deinit = True):
         if deinit:
             ustrbuf_deinit(buf)
     return ret
+
+
+cdef ulib_ret pystream_read(void *ctx, void *buffer, size_t size, size_t *read) noexcept:
+    try:
+        stream: IOBase = <object>ctx
+        data = stream.read(size)
+        if data is None:
+            return ULIB_ERR_IO
+        read[0] = len(data)
+        memcpy(buffer, <char *>data, read[0])
+        return ULIB_OK
+    except Exception:
+        return ULIB_ERR_IO
+
+
+cdef ulib_ret pystream_write(void *ctx, const void *buffer, size_t size, size_t *written) noexcept:
+    cdef char[:] memview
+    try:
+        stream: IOBase = <object>ctx
+        memview = <char[:size]>buffer
+        written[0] = stream.write(memview)
+        return ULIB_OK
+    except Exception:
+        return ULIB_ERR_IO
+
+
+cdef ulib_ret pystream_reset(void *ctx) noexcept:
+    try:
+        stream: IOBase = <object>ctx
+        stream.seek(0)
+        return ULIB_OK
+    except Exception:
+        return ULIB_ERR_IO
+
+
+cdef ulib_ret pystream_flush(void *ctx) noexcept:
+    try:
+        stream: IOBase = <object>ctx
+        stream.flush()
+        return ULIB_OK
+    except Exception:
+        return ULIB_ERR_IO
+
+
+cdef UIStream uistream_from_py(stream: IOBase):
+    return uistream(<void *>stream, pystream_read, pystream_reset, NULL)
+
+
+cdef UOStream uostream_from_py(stream: IOBase):
+    return uostream(<void *>stream, pystream_write, NULL, pystream_reset, pystream_flush, NULL)
 
 
 cdef CowlString *cowl_string_from_str_raw(str s):
@@ -459,11 +511,11 @@ cdef class Object:
             cowl_release(self.ptr)
 
     def __str__(self) -> str:
-        cdef UString str_rep = cowl_to_ustring(self.ptr)
+        cdef UString str_rep = cowl_to_string(self.ptr)
         return ustring_to_str(&str_rep)
 
     def __repr__(self) -> str:
-        cdef UString str_rep = cowl_to_debug_ustring(self.ptr)
+        cdef UString str_rep = cowl_to_debug_string(self.ptr)
         return ustring_to_str(&str_rep)
 
     def __eq__(self, other: Object) -> bool:
@@ -665,7 +717,7 @@ cdef class IRI(Object, Primitive, HasIRI):
         return cowl_string_to_str(cowl_iri_get_rem(<CowlIRI *>self.ptr))
 
     def as_string(self) -> str:
-        cdef UString iri_str = cowl_iri_to_ustring(<CowlIRI *>self.ptr)
+        cdef UString iri_str = cowl_iri_to_string(<CowlIRI *>self.ptr)
         return ustring_to_str(&iri_str)
 
 
@@ -1967,14 +2019,30 @@ class PrimitiveFactory(Protocol):
 cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     cdef PrefixMap pm
 
-    @classmethod
-    def at_path(cls, path: Path | str) -> Ontology:
+    @staticmethod
+    cdef CowlOntology *read_path(path: Path | str):
         bytes_path = _as_bytes(path)
         cdef UString path_str = ustring_wrap_bytes(bytes_path)
-        cdef CowlOntology *ptr = cowl_ontology_at_path(path_str)
+        return cowl_ontology_at_path(path_str, NULL)
+
+    @staticmethod
+    cdef CowlOntology *read_stream(stream: IOBase):
+        cdef UIStream istream = uistream_from_py(stream)
+        cdef CowlOntology *ptr = cowl_ontology_from_stream(&istream, NULL)
+        uistream_deinit(&istream)
+        return ptr
+
+    @classmethod
+    def read(cls, source: IOBase | Path | str) -> Ontology:
+        cdef CowlOntology *ptr
+
+        if isinstance(source, IOBase):
+            ptr = Ontology.read_stream(source)
+        else:
+            ptr = Ontology.read_path(source)
 
         if not ptr:
-            msg = f"Failed to load ontology at path: {path}"
+            msg = f"Failed to read ontology"
             raise ValueError(msg)
 
         return Object.wrap(ptr)
@@ -2016,15 +2084,10 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     def primitive_count(self, types: Types | None = None) -> int:
         cdef CowlOntology *onto = <CowlOntology *>self.ptr
-        return cowl_ontology_primitives_count(onto, cowl_primitive_flags_from_py(types))
+        return cowl_ontology_primitive_count(onto, cowl_primitive_flags_from_py(types))
 
     def IRI(self, iri: str) -> IRI:
         return self.prefix_map.IRI(iri)
-
-    def to_path(self, path: Path | str) -> None:
-        bytes_path = _as_bytes(path)
-        cdef UString path_str = ustring_wrap_bytes(bytes_path)
-        cowl_ontology_to_path(<CowlOntology *>self.ptr, path_str)
 
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         cdef IRI iri_obj = _as_iri(iri)
@@ -2140,6 +2203,22 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def remove(self, *args: Object) -> None:
         for item in args:
             self._remove(item)
+
+    def _write_to_path(self, path: Path | str) -> None:
+        bytes_path = _as_bytes(path)
+        cdef UString path_str = ustring_wrap_bytes(bytes_path)
+        cowl_ontology_to_path(<CowlOntology *>self.ptr, path_str)
+
+    def _write_to_stream(self, stream: IOBase) -> None:
+        cdef UOStream ostream = uostream_from_py(stream)
+        cowl_ontology_to_stream(<CowlOntology *>self.ptr, &ostream)
+        uostream_deinit(&ostream)
+
+    def write(self, destination: IOBase | Path | str) -> None:
+        if isinstance(destination, IOBase):
+            self._write_to_stream(destination)
+        else:
+            self._write_to_path(destination)
 
 
 cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):

@@ -2,6 +2,12 @@
 
 from libc.stdint cimport uint8_t
 
+
+cdef extern from "stdarg.h":
+    ctypedef struct va_list:
+        pass
+
+
 cdef extern from "ulib.h":
 
     ctypedef int ulib_ret
@@ -14,10 +20,18 @@ cdef extern from "ulib.h":
         ULIB_ERR_BOUNDS
         ULIB_ERR_IO
 
+    ctypedef struct UIStream: pass
     ctypedef struct UString: pass
     ctypedef struct UStrBuf: pass
     ctypedef struct UOStream: pass
 
+    UIStream uistream(void *ctx, ulib_ret (*read_func)(void *, void *, size_t, size_t *),
+                      ulib_ret (*reset_func)(void *), ulib_ret (*free_func)(void *))
+    ulib_ret uistream_deinit(UIStream *stream)
+    UOStream uostream(void *ctx, ulib_ret (*write_func)(void *, const void *, size_t, size_t *),
+                      ulib_ret (*writef_func)(void *, size_t *, const char *, va_list),
+                      ulib_ret (*flush_func)(void *), ulib_ret (*reset_func)(void *),
+                      ulib_ret (*free_func)(void *))
     ulib_ret uostream_to_strbuf(UOStream *stream, UStrBuf *buf)
     ulib_ret uostream_deinit(UOStream *stream)
     const char *ustring_data(UString str)
@@ -29,7 +43,7 @@ cdef extern from "ulib.h":
     void ustrbuf_deinit(UStrBuf *buf)
     const char *ustrbuf_data(UStrBuf *buf)
     int ustrbuf_length(UStrBuf *buf)
-    UString ustrbuf_to_ustring(UStrBuf *buf)
+    UString ustrbuf_to_string(UStrBuf *buf)
 
 
 cdef extern from "cowl.h":
@@ -272,8 +286,8 @@ cdef extern from "cowl.h":
     CowlObjectType cowl_get_type(CowlAny *object)
     bint cowl_equals(CowlAny *lhs, CowlAny *rhs)
     int cowl_hash(CowlAny *object)
-    UString cowl_to_ustring(CowlAny *object)
-    UString cowl_to_debug_ustring(CowlAny *object)
+    UString cowl_to_string(CowlAny *object)
+    UString cowl_to_debug_string(CowlAny *object)
     CowlIRI *cowl_get_iri(CowlAny *object)
     CowlString *cowl_get_ns(CowlAny *object)
     CowlString *cowl_get_rem(CowlAny *object)
@@ -385,7 +399,7 @@ cdef extern from "cowl.h":
     CowlIRI *cowl_iri_from_string(UString s)
     CowlString *cowl_iri_get_ns(CowlIRI *iri)
     CowlString *cowl_iri_get_rem(CowlIRI *iri)
-    UString cowl_iri_to_ustring(CowlIRI *iri)
+    UString cowl_iri_to_string(CowlIRI *iri)
     CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
     CowlLiteral *cowl_literal(CowlString *value, CowlAny *dt_or_lang)
     CowlDatatype *cowl_literal_get_datatype(CowlLiteral *literal)
@@ -448,10 +462,11 @@ cdef extern from "cowl.h":
     cowl_ret cowl_ontology_add_annot(CowlOntology *onto, CowlAnnotation *annot)
     cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     cowl_ret cowl_ontology_add_import(CowlOntology *onto, CowlIRI *iri)
-    CowlOntology *cowl_ontology_at_path(UString path)
+    CowlOntology *cowl_ontology_at_path(UString path, cowl_ret *ret)
     int cowl_ontology_axiom_count(CowlOntology *onto)
     int cowl_ontology_axiom_count_for_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
     int cowl_ontology_axiom_count_for_types(CowlOntology *onto, CowlAxiomFlags types)
+    CowlOntology *cowl_ontology_from_stream(UIStream *stream, cowl_ret *ret)
     CowlPrefixMap *cowl_ontology_get_prefix_map(CowlOntology *onto)
     CowlIRI *cowl_ontology_get_version(CowlOntology *onto)
     bint cowl_ontology_has_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
@@ -465,7 +480,7 @@ cdef extern from "cowl.h":
         CowlAxiomFilter *filter, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_related(CowlOntology *onto, CowlAnyPrimitive *primitive,
         CowlAxiomType type, CowlPosition position, CowlIterator *iter)
-    int cowl_ontology_primitives_count(CowlOntology *onto, CowlPrimitiveFlags flags)
+    int cowl_ontology_primitive_count(CowlOntology *onto, CowlPrimitiveFlags flags)
     bint cowl_ontology_remove_annot(CowlOntology *onto, CowlAnnotation *annot)
     bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     bint cowl_ontology_remove_import(CowlOntology *onto, CowlIRI *iri)

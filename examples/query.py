@@ -9,7 +9,7 @@ import cowl
 
 def main() -> None:
     res_dir = Path(__file__).parent / "res"
-    onto = cowl.Ontology.at_path(res_dir / "pizza.owl")
+    onto = cowl.Ontology.read(res_dir / "pizza.owl")
 
     # Update the global prefix map for pretty-printing.
     prefix_map = cowl.PrefixMap.default()

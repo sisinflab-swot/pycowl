@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `CowlOntology.axiom_count` and `CowlOntology.primitive_count`.
 - Type guard functions (`is_entity`, `is_primitive`, `is_axiom`, etc.).
 
+### Changed
+
+- Replaced `Ontology` methods `at_path` and `to_path` with `read` and `write`.
+
 ### Fixed
 
 - Implemented `__and__` and `__or__` for `DataRange`.

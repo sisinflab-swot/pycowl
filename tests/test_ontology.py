@@ -10,12 +10,12 @@ TEST_ONTO_PATH = RES_DIR / "test_onto.owl"
 
 
 def test_round_trip() -> None:
-    orig = cowl.Ontology.at_path(TEST_ONTO_PATH)
+    orig = cowl.Ontology.read(TEST_ONTO_PATH)
 
     with TemporaryDirectory() as tmp:
         tmp_path = Path(tmp) / "test_onto_out.owl"
-        orig.to_path(tmp_path)
-        other = cowl.Ontology.at_path(tmp_path)
+        orig.write(tmp_path)
+        other = cowl.Ontology.read(tmp_path)
 
     assert str(orig) == str(other)
     assert orig.iri() == other.iri()

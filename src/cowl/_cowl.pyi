@@ -7,6 +7,7 @@ from collections.abc import (
 )
 from datetime import date, datetime
 from enum import IntFlag, auto
+from io import IOBase
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
 
@@ -1508,8 +1509,8 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     """Ontology."""
 
     @classmethod
-    def at_path(cls, path: Path | str) -> Ontology:
-        """Load an ontology from a path."""
+    def read(cls, source: IOBase | Path | str) -> Ontology:
+        """Read an ontology from the specified source."""
 
     @property
     def prefix_map(self) -> PrefixMap:
@@ -1591,9 +1592,6 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         determining the related objects.
         """
 
-    def to_path(self, path: Path | str) -> None:
-        """Write the ontology to a path."""
-
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         """
         Set the ontology IRI.
@@ -1613,6 +1611,9 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     def remove(self, *args: Annotation | Axiom | IRI) -> None:
         """Remove ontology items."""
+
+    def write(self, destination: IOBase | Path | str) -> None:
+        """Write the ontology to the specified destination."""
 
 class PrefixMap(Object, MutableMapping[str, str], PrimitiveFactory):
     """Prefix map."""

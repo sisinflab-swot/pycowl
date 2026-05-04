@@ -20,18 +20,24 @@ cdef extern from "ulib.h":
         ULIB_ERR_BOUNDS
         ULIB_ERR_IO
 
-    ctypedef struct UIStream: pass
+    ctypedef struct UIStream:
+        size_t read_bytes
     ctypedef struct UString: pass
     ctypedef struct UStrBuf: pass
-    ctypedef struct UOStream: pass
+    ctypedef struct UOStream:
+        size_t written_bytes
 
     UIStream uistream(void *ctx, ulib_ret (*read_func)(void *, void *, size_t, size_t *),
                       ulib_ret (*reset_func)(void *), ulib_ret (*free_func)(void *))
+    ulib_ret uistream_buf(UOStream *stream, size_t buf_size)
     ulib_ret uistream_deinit(UIStream *stream)
+    ulib_ret uistream_from_path(UIStream *stream, const char *path)
     UOStream uostream(void *ctx, ulib_ret (*write_func)(void *, const void *, size_t, size_t *),
                       ulib_ret (*writef_func)(void *, size_t *, const char *, va_list),
                       ulib_ret (*flush_func)(void *), ulib_ret (*reset_func)(void *),
                       ulib_ret (*free_func)(void *))
+    ulib_ret uostream_buf(UOStream *stream, size_t buf_size)
+    ulib_ret uostream_to_path(UOStream *stream, const char *path)
     ulib_ret uostream_to_strbuf(UOStream *stream, UStrBuf *buf)
     ulib_ret uostream_deinit(UOStream *stream)
     const char *ustring_data(UString str)
@@ -49,6 +55,15 @@ cdef extern from "ulib.h":
 cdef extern from "cowl.h":
 
     ctypedef int cowl_ret
+
+    cdef enum cowl_ret_builtin:
+        COWL_OK
+        COWL_NO
+        COWL_ERR
+        COWL_ERR_MEM
+        COWL_ERR_BOUNDS
+        COWL_ERR_IO
+        COWL_ERR_SYNTAX
 
     ctypedef uint8_t CowlAxiomFlags
     CowlAxiomFlags COWL_AF_NONE
@@ -144,6 +159,12 @@ cdef extern from "cowl.h":
     ctypedef struct CowlObjPropRangeAxiom: pass
     ctypedef struct CowlObjQuant: pass
     ctypedef struct CowlOntology: pass
+    cdef struct CowlOntologyHeader:
+        CowlPrefixMap *pm
+        CowlIRI *iri
+        CowlIRI *version
+        const UVec_CowlObjectPtr *imports
+        const UVec_CowlObjectPtr *annotations
     ctypedef struct CowlPrefixMap: pass
     ctypedef struct CowlString: pass
     ctypedef struct CowlSubAnnotPropAxiom: pass
@@ -152,6 +173,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlSubObjPropAxiom: pass
     ctypedef struct CowlTable: pass
     ctypedef struct CowlVector: pass
+    ctypedef struct CowlWriter: pass
     ctypedef struct UHash_CowlObjectPtr: pass
     ctypedef struct UVec_CowlObjectPtr: pass
 
@@ -400,6 +422,8 @@ cdef extern from "cowl.h":
     CowlString *cowl_iri_get_ns(CowlIRI *iri)
     CowlString *cowl_iri_get_rem(CowlIRI *iri)
     UString cowl_iri_to_string(CowlIRI *iri)
+    bint cowl_is_err(cowl_ret ret)
+    bint cowl_is_ok(cowl_ret ret)
     CowlIterator cowl_iterator_vec(UVec_CowlObjectPtr *vec, bint retain)
     CowlLiteral *cowl_literal(CowlString *value, CowlAny *dt_or_lang)
     CowlDatatype *cowl_literal_get_datatype(CowlLiteral *literal)
@@ -467,10 +491,12 @@ cdef extern from "cowl.h":
     int cowl_ontology_axiom_count_for_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
     int cowl_ontology_axiom_count_for_types(CowlOntology *onto, CowlAxiomFlags types)
     CowlOntology *cowl_ontology_from_stream(UIStream *stream, cowl_ret *ret)
+    CowlIRI *cowl_ontology_get_iri(CowlOntology *onto)
     CowlPrefixMap *cowl_ontology_get_prefix_map(CowlOntology *onto)
     CowlIRI *cowl_ontology_get_version(CowlOntology *onto)
     bint cowl_ontology_has_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     bint cowl_ontology_has_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
+    CowlOntologyHeader cowl_ontology_header_empty()
     cowl_ret cowl_ontology_iterate_axioms(CowlOntology *onto, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_axioms_of_types(CowlOntology *onto,
         CowlAxiomFlags types, CowlIterator *iter)
@@ -478,6 +504,7 @@ cdef extern from "cowl.h":
         CowlAnyPrimitive *primitive, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_axioms_matching(CowlOntology *onto,
         CowlAxiomFilter *filter, CowlIterator *iter)
+    cowl_ret cowl_ontology_iterate_imports(CowlOntology *onto, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_related(CowlOntology *onto, CowlAnyPrimitive *primitive,
         CowlAxiomType type, CowlPosition position, CowlIterator *iter)
     int cowl_ontology_primitive_count(CowlOntology *onto, CowlPrimitiveFlags flags)
@@ -501,6 +528,7 @@ cdef extern from "cowl.h":
     CowlIRI *cowl_prefix_map_parse_iri(CowlPrefixMap *map, UString str)
     CowlPrimitiveFlags cowl_primitive_flags_add_type(CowlPrimitiveFlags flags,
         CowlPrimitiveType type)
+    UString cowl_ret_to_string(cowl_ret ret)
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)
     CowlSubAnnotPropAxiom *cowl_sub_annot_prop_axiom(CowlAnnotProp *sub,
@@ -531,6 +559,17 @@ cdef extern from "cowl.h":
     int cowl_vector_count(CowlVector *vec)
     CowlAny *cowl_vector_get_item(CowlVector *vec, int idx)
     bint cowl_vector_contains(CowlVector *vec, CowlAny *item)
+    bint cowl_writer_can_write_object(CowlWriter *writer)
+    bint cowl_writer_can_write_stream(CowlWriter *writer)
+    CowlWriter *cowl_writer_default()
+    const char *cowl_writer_get_name(CowlWriter *writer)
+    CowlWriter *cowl_writer_functional()
+    cowl_ret cowl_writer_write(CowlWriter *writer, UOStream *stream, CowlAny *object)
+    cowl_ret cowl_writer_write_axiom(CowlWriter *writer, UOStream *stream, CowlAnyAxiom *axiom)
+    cowl_ret cowl_writer_write_footer(CowlWriter *writer, UOStream *stream)
+    cowl_ret cowl_writer_write_header(CowlWriter *writer, UOStream *stream, CowlOntologyHeader header)
+    cowl_ret cowl_writer_write_ontology(CowlWriter *writer, UOStream *stream, CowlOntology *onto)
+    cowl_ret cowl_writer_write_ontology_to_path(CowlWriter *writer, UString path, CowlOntology *onto)
     int uhash_count_CowlObjectPtr(const UHash_CowlObjectPtr *h)
     CowlAny *uhash_key_CowlObjectPtr(const UHash_CowlObjectPtr *h, int idx)
     int uhash_size_CowlObjectPtr(const UHash_CowlObjectPtr *h)
@@ -542,9 +581,10 @@ cdef extern from "cowl.h":
 
 
 cpdef enum Ret:
-    OK = ulib_ret_builtin.ULIB_OK
-    NO = ulib_ret_builtin.ULIB_NO
-    ERR = ulib_ret_builtin.ULIB_ERR
-    ERR_MEM = ulib_ret_builtin.ULIB_ERR_MEM
-    ERR_BOUNDS = ulib_ret_builtin.ULIB_ERR_BOUNDS
-    ERR_IO = ulib_ret_builtin.ULIB_ERR_IO
+    OK = cowl_ret_builtin.COWL_OK
+    NO = cowl_ret_builtin.COWL_NO
+    ERR = cowl_ret_builtin.COWL_ERR
+    ERR_MEM = cowl_ret_builtin.COWL_ERR_MEM
+    ERR_BOUNDS = cowl_ret_builtin.COWL_ERR_BOUNDS
+    ERR_IO = cowl_ret_builtin.COWL_ERR_IO
+    ERR_SYNTAX = cowl_ret_builtin.COWL_ERR_SYNTAX

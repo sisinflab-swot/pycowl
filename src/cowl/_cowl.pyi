@@ -5,6 +5,7 @@ from collections.abc import (
     Iterable,
     MutableMapping,
 )
+from contextlib import AbstractContextManager
 from datetime import date, datetime
 from enum import IntFlag, auto
 from io import IOBase
@@ -233,7 +234,7 @@ class Object:
     """Base OWL object."""
 
     def __init__(self) -> NoReturn:
-        """Create an OWL object."""
+        """This class cannot be instantiated directly."""
 
     def is_entity(self) -> bool:
         """Return whether this object is an entity."""
@@ -1505,7 +1506,7 @@ class AnnotationPropertyRange(Axiom, HasAnnotationProperty):
 
 # Ontology
 
-class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
+class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     """Ontology."""
 
     @classmethod
@@ -1535,6 +1536,9 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
 
     def primitive_count(self, types: Types[Primitive] | None = None) -> int:
         """Return the number of primitives of the given types in the ontology."""
+
+    def imports(self) -> Collection[IRI]:
+        """Return the IRIs of the imported ontologies."""
 
     @overload
     def foreach_axiom(
@@ -1592,6 +1596,9 @@ class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         determining the related objects.
         """
 
+    def iri(self) -> IRI | None:
+        """Return the ontology IRI, if any."""
+
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         """
         Set the ontology IRI.
@@ -1627,6 +1634,64 @@ class PrefixMap(Object, MutableMapping[str, str], PrimitiveFactory):
 
     def items_iter(self) -> Iterable[tuple[str, str]]:
         """Iterate over prefix bindings."""
+
+# Readers and writers
+
+class Header:
+    """Ontology header."""
+
+    @classmethod
+    def from_ontology(cls, ontology: Ontology) -> Header:
+        """Create an ontology header from an ontology."""
+
+    def __init__(
+        self,
+        prefix_map: PrefixMap | None = None,
+        iri: str | IRI | None = None,
+        version: str | IRI | None = None,
+        imports: Collection[IRI] | None = None,
+        annotations: Collection[Annotation] | None = None,
+    ) -> None:
+        """Create an ontology header."""
+
+class StreamWriter(Object, AbstractContextManager[StreamWriter]):
+    """Stream writer."""
+
+    @property
+    def written_bytes(self) -> int:
+        """Return the number of bytes written so far."""
+
+    def __init__(self) -> NoReturn:
+        """This class cannot be instantiated directly."""
+
+    def write(self, construct: Header | Axiom) -> None:
+        """Write an ontology header or axiom."""
+
+    def write_footer(self) -> None:
+        """Write any necessary footer content."""
+
+    def close(self) -> None:
+        """Close the underlying stream."""
+
+class Writer(Object):
+    """Object that can write OWL constructs."""
+
+    @classmethod
+    def default(cls) -> Writer:
+        """Return the default writer."""
+
+    @classmethod
+    def functional(cls) -> Writer:
+        """Return the functional syntax writer."""
+
+    def __init__(self) -> NoReturn:
+        """This class cannot be instantiated directly."""
+
+    def write(self, ontology: Ontology, destination: IOBase | Path | str) -> int:
+        """Write an ontology to the specified destination."""
+
+    def stream(self, destination: IOBase | Path | str) -> StreamWriter:
+        """Return a stream writer for the specified destination."""
 
 # Vocabularies
 

@@ -1,10 +1,15 @@
 # type: ignore
+import os
 from collections.abc import Collection as ABCCollection, Iterable, MutableMapping
+from cpython.ref cimport Py_INCREF, Py_DECREF
 from datetime import date, datetime
 from enum import IntFlag
 from io import IOBase
+from libc.errno cimport errno
 from libc.string cimport memcpy
+from pathlib import Path
 from typing import NoReturn, Protocol, TypeAlias, Union, overload
+
 from ._c_api cimport *
 
 
@@ -36,6 +41,7 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_FACET_RESTR] = FacetRestriction
     _TYPES[CowlObjectType.COWL_OT_ONTOLOGY] = Ontology
     _TYPES[CowlObjectType.COWL_OT_PREFIX_MAP] = PrefixMap
+    _TYPES[CowlObjectType.COWL_OT_WRITER] = Writer
     _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
     _TYPES[CowlObjectType.COWL_OT_ANNOT_PROP] = AnnotationProperty
     _TYPES[CowlObjectType.COWL_OT_A_DECL] = Declaration
@@ -183,6 +189,20 @@ cdef class Ptr:
 cdef Ptr NULLPtr = Ptr.__new__(Ptr)
 
 
+cdef Exception as_exception(cowl_ret code):
+    cdef UString str = cowl_ret_to_string(code)
+    msg = ustring_to_str(&str, deinit=False).capitalize()
+    if code == Ret.ERR_MEM:
+        return MemoryError(msg)
+    if code == Ret.ERR_BOUNDS:
+        return IndexError(msg)
+    if code == Ret.ERR_IO:
+        return OSError(f"{msg}: {os.strerror(errno)}" if errno != 0 else msg)
+    if code == Ret.ERR_SYNTAX:
+        return SyntaxError(msg)
+    return RuntimeError(msg)
+
+
 cdef inline UString ustring_wrap_bytes(bytes data):
     return ustring_wrap(<const char *>data, len(data))
 
@@ -219,12 +239,12 @@ cdef ulib_ret pystream_read(void *ctx, void *buffer, size_t size, size_t *read) 
         stream: IOBase = <object>ctx
         data = stream.read(size)
         if data is None:
-            return ULIB_ERR_IO
+            return Ret.ERR_IO
         read[0] = len(data)
         memcpy(buffer, <char *>data, read[0])
-        return ULIB_OK
+        return Ret.OK
     except Exception:
-        return ULIB_ERR_IO
+        return Ret.ERR_IO
 
 
 cdef ulib_ret pystream_write(void *ctx, const void *buffer, size_t size, size_t *written) noexcept:
@@ -233,35 +253,58 @@ cdef ulib_ret pystream_write(void *ctx, const void *buffer, size_t size, size_t 
         stream: IOBase = <object>ctx
         memview = <char[:size]>buffer
         written[0] = stream.write(memview)
-        return ULIB_OK
+        return Ret.OK
     except Exception:
-        return ULIB_ERR_IO
+        return Ret.ERR_IO
 
 
 cdef ulib_ret pystream_reset(void *ctx) noexcept:
     try:
         stream: IOBase = <object>ctx
         stream.seek(0)
-        return ULIB_OK
+        return Ret.OK
     except Exception:
-        return ULIB_ERR_IO
+        return Ret.ERR_IO
 
 
 cdef ulib_ret pystream_flush(void *ctx) noexcept:
     try:
         stream: IOBase = <object>ctx
         stream.flush()
-        return ULIB_OK
+        return Ret.OK
     except Exception:
-        return ULIB_ERR_IO
+        return Ret.ERR_IO
 
 
-cdef UIStream uistream_from_py(stream: IOBase):
-    return uistream(<void *>stream, pystream_read, pystream_reset, NULL)
+cdef ulib_ret pystream_free(void *ctx) noexcept:
+    Py_DECREF(<object>ctx)
+    return Ret.OK
 
 
-cdef UOStream uostream_from_py(stream: IOBase):
-    return uostream(<void *>stream, pystream_write, NULL, pystream_reset, pystream_flush, NULL)
+cdef UIStream uistream_from_py(src: IOBase | Path | str):
+    if isinstance(src, IOBase):
+        Py_INCREF(src)
+        return uistream(<void *>src, pystream_read, pystream_reset, pystream_free)
+    cdest = _as_bytes(src)
+    cdef UIStream stream
+    cdef ulib_ret ret = uistream_from_path(&stream, <const char *>cdest)
+    if cowl_is_err(ret):
+        raise as_exception(ret)
+    return stream
+
+
+cdef UOStream uostream_from_py(dst: IOBase | Path | str):
+    if isinstance(dst, IOBase):
+        Py_INCREF(dst)
+        return uostream(<void *>dst, pystream_write, NULL, pystream_reset, pystream_flush, pystream_free)
+    cdest = _as_bytes(dst)
+    cdef UOStream stream
+    cdef ulib_ret ret
+    if cowl_is_err(ret := uostream_to_path(&stream, <const char *>cdest)):
+        raise as_exception(ret)
+    if cowl_is_err(ret := uostream_buf(&stream, 16384)):
+        raise as_exception(ret)
+    return stream
 
 
 cdef CowlString *cowl_string_from_str_raw(str s):
@@ -2016,35 +2059,18 @@ class PrimitiveFactory(Protocol):
         return self.NamedIndividual(iri) if iri else self.AnonymousIndividual()
 
 
-cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
+cdef class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     cdef PrefixMap pm
-
-    @staticmethod
-    cdef CowlOntology *read_path(path: Path | str):
-        bytes_path = _as_bytes(path)
-        cdef UString path_str = ustring_wrap_bytes(bytes_path)
-        return cowl_ontology_at_path(path_str, NULL)
-
-    @staticmethod
-    cdef CowlOntology *read_stream(stream: IOBase):
-        cdef UIStream istream = uistream_from_py(stream)
-        cdef CowlOntology *ptr = cowl_ontology_from_stream(&istream, NULL)
-        uistream_deinit(&istream)
-        return ptr
 
     @classmethod
     def read(cls, source: IOBase | Path | str) -> Ontology:
-        cdef CowlOntology *ptr
-
-        if isinstance(source, IOBase):
-            ptr = Ontology.read_stream(source)
-        else:
-            ptr = Ontology.read_path(source)
-
-        if not ptr:
-            msg = f"Failed to read ontology"
-            raise ValueError(msg)
-
+        cdef cowl_ret ret
+        cdef UIStream stream = uistream_from_py(source)
+        cdef CowlOntology *ptr = cowl_ontology_from_stream(&stream, &ret)
+        uistream_deinit(&stream)
+        if cowl_is_err(ret):
+            cowl_release(ptr)
+            raise as_exception(ret)
         return Object.wrap(ptr)
 
     @property
@@ -2089,6 +2115,10 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def IRI(self, iri: str) -> IRI:
         return self.prefix_map.IRI(iri)
 
+    def iri(self) -> IRI | None:
+        cdef CowlIRI *iri_ptr = cowl_ontology_get_iri(<CowlOntology *>self.ptr)
+        return Object.retain(iri_ptr) if iri_ptr else None
+
     def set_iri(self, iri: str | IRI, *, update_prefix: bool = False) -> None:
         cdef IRI iri_obj = _as_iri(iri)
         cowl_ontology_set_iri(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
@@ -2105,6 +2135,12 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
     def set_version(self, version: str | IRI) -> None:
         cdef IRI iri_obj = _as_iri(version)
         cowl_ontology_set_version(<CowlOntology *>self.ptr, <CowlIRI *>iri_obj.ptr)
+
+    def imports(self) -> Collection[IRI]:
+        cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
+        cdef CowlIterator iter = cowl_iterator_vec(&vec, True)
+        cowl_ontology_iterate_imports(<CowlOntology *>self.ptr, &iter)
+        return Object.wrap(cowl_vector_wrap(&vec))
 
     cdef void _foreach_axiom(
         self,
@@ -2204,21 +2240,8 @@ cdef class Ontology(Object, Annotated, HasIRI, HasPrimitives, PrimitiveFactory):
         for item in args:
             self._remove(item)
 
-    def _write_to_path(self, path: Path | str) -> None:
-        bytes_path = _as_bytes(path)
-        cdef UString path_str = ustring_wrap_bytes(bytes_path)
-        cowl_ontology_to_path(<CowlOntology *>self.ptr, path_str)
-
-    def _write_to_stream(self, stream: IOBase) -> None:
-        cdef UOStream ostream = uostream_from_py(stream)
-        cowl_ontology_to_stream(<CowlOntology *>self.ptr, &ostream)
-        uostream_deinit(&ostream)
-
     def write(self, destination: IOBase | Path | str) -> None:
-        if isinstance(destination, IOBase):
-            self._write_to_stream(destination)
-        else:
-            self._write_to_path(destination)
+        Writer.default().write(self, destination)
 
 
 cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
@@ -2277,6 +2300,130 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
             value = cowl_string_to_str(<CowlString *>uhmap_val_CowlObjectPtr(h, idx))
             yield (key, value)
             idx = uhash_next_CowlObjectPtr(h, idx + 1)
+
+
+# Readers and writers
+
+
+cdef class Header:
+    cdef PrefixMap pm
+    cdef IRI iri
+    cdef IRI version
+    cdef Collection imports
+    cdef Collection annotations
+
+    @classmethod
+    def from_ontology(cls, ontology: Ontology) -> Header:
+        return Header(
+            prefix_map=ontology.prefix_map,
+            iri=ontology.iri(),
+            version=ontology.version(),
+            imports=ontology.imports(),
+            annotations=ontology.annotations(),
+        )
+
+    def __init__(
+        self,
+        prefix_map: PrefixMap | None = None,
+        iri: str | IRI | None = None,
+        version: str | IRI | None = None,
+        imports: Collection[IRI] | None = None,
+        annotations: Collection[Annotation] | None = None,
+    ) -> None:
+        self.pm = prefix_map
+        self.iri = _as_iri(iri) if iri else None
+        self.version = _as_iri(version) if version else None
+        self.imports = imports
+        self.annotations = annotations
+
+    cdef CowlOntologyHeader to_cowl(self):
+        cdef CowlOntologyHeader header = cowl_ontology_header_empty()
+        if self.pm:
+            header.pm = <CowlPrefixMap *>self.pm.ptr
+        if self.iri:
+            header.iri = <CowlIRI *>self.iri.ptr
+        if self.version:
+            header.version = <CowlIRI *>self.version.ptr
+        if self.imports:
+            header.imports = cowl_vector_get_data(<CowlVector *>self.imports.ptr)
+        if self.annotations:
+            header.annotations = cowl_vector_get_data(<CowlVector *>self.annotations.ptr)
+        return header
+
+
+cdef class StreamWriter(Object):
+    cdef UOStream stream
+
+    @staticmethod
+    cdef StreamWriter create(CowlWriter *writer, destination: IOBase | Path | str):
+        cdef StreamWriter obj = Object.retain_as(StreamWriter, writer)
+        obj.stream = uostream_from_py(destination)
+        return obj
+
+    @property
+    def written_bytes(self) -> int:
+        return self.stream.written_bytes
+
+    def __init__(self) -> None:
+        msg = "Use `Writer.stream()` to create a StreamWriter instance."
+        raise NotImplementedError(msg)
+
+    def __dealloc__(self) -> None:
+        self.close()
+
+    def __enter__(self) -> StreamWriter:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.write_footer()
+        self.close()
+
+    def write(self, construct: Header | Axiom) -> None:
+        cdef CowlWriter *writer = <CowlWriter *>self.ptr
+        cdef cowl_ret ret
+        if isinstance(construct, Header):
+            ret = cowl_writer_write_header(writer, &self.stream, (<Header>construct).to_cowl())
+        else:
+            ret = cowl_writer_write_axiom(writer, &self.stream, (<Axiom>construct).ptr)
+        if cowl_is_err(ret):
+            raise as_exception(ret)
+
+    def write_footer(self) -> None:
+        cdef cowl_ret ret = cowl_writer_write_footer(<CowlWriter *>self.ptr, &self.stream)
+        if cowl_is_err(ret):
+            raise as_exception(ret)
+
+    def close(self) -> None:
+        uostream_deinit(&self.stream)
+
+
+cdef class Writer(Object):
+
+    @classmethod
+    def default(cls) -> Writer:
+        return Object.wrap(cowl_writer_default())
+
+    @classmethod
+    def functional(cls) -> Writer:
+        return Object.wrap(cowl_writer_functional())
+
+    def __init__(self) -> None:
+        msg = "Use one of the available class methods to create a Writer instance."
+        raise NotImplementedError(msg)
+
+    def write(self, ontology: Ontology, destination: IOBase | Path | str) -> int:
+        cdef UOStream stream = uostream_from_py(destination)
+        cdef CowlOntology *onto = <CowlOntology *>ontology.ptr
+        cdef ret = cowl_writer_write_ontology(<CowlWriter *>self.ptr, &stream, onto)
+        uostream_deinit(&stream)
+        if cowl_is_err(ret):
+            raise as_exception(ret)
+        return stream.written_bytes
+
+    def stream(self, destination: IOBase | Path | str) -> StreamWriter:
+        if not cowl_writer_can_write_stream(<CowlWriter *>self.ptr):
+            raise NotImplementedError("This writer does not support stream writing.")
+        return StreamWriter.create(<CowlWriter *>self.ptr, destination)
 
 
 # Vocabularies

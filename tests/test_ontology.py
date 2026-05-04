@@ -9,6 +9,29 @@ RES_DIR = TEST_DIR / "res"
 TEST_ONTO_PATH = RES_DIR / "test_onto.owl"
 
 
+def ontologies_match(a: cowl.Ontology, b: cowl.Ontology) -> bool:
+    assert str(a) == str(b)
+    assert a.iri() == b.iri()
+
+    a_axioms = set(a.axioms())
+    b_axioms = set(b.axioms())
+    assert a_axioms == b_axioms
+
+    a_annotations = set(a.annotations())
+    b_annotations = set(b.annotations())
+    assert a_annotations == b_annotations
+
+    a_imports = set(a.imports())
+    b_imports = set(b.imports())
+    assert a_imports == b_imports
+
+    a_primitives = set(a.primitives())
+    b_primitives = set(b.primitives())
+    assert a_primitives == b_primitives
+
+    return True
+
+
 def test_round_trip() -> None:
     orig = cowl.Ontology.read(TEST_ONTO_PATH)
 
@@ -17,20 +40,22 @@ def test_round_trip() -> None:
         orig.write(tmp_path)
         other = cowl.Ontology.read(tmp_path)
 
-    assert str(orig) == str(other)
-    assert orig.iri() == other.iri()
+    assert ontologies_match(orig, other)
 
-    orig_axioms = set(orig.axioms())
-    other_axioms = set(other.axioms())
-    assert orig_axioms == other_axioms
 
-    orig_annotations = set(orig.annotations())
-    other_annotations = set(other.annotations())
-    assert orig_annotations == other_annotations
+def test_stream_round_trip() -> None:
+    orig = cowl.Ontology.read(TEST_ONTO_PATH)
 
-    orig_primitives = set(orig.primitives())
-    other_primitives = set(other.primitives())
-    assert orig_primitives == other_primitives
+    with TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp) / "test_onto_out.owl"
+        writer = cowl.Writer.default()
+        with writer.stream(tmp_path) as stream:
+            stream.write(cowl.Header.from_ontology(orig))
+            for axiom in orig.axioms():
+                stream.write(axiom)
+        other = cowl.Ontology.read(tmp_path)
+
+    assert ontologies_match(orig, other)
 
 
 def test_editing() -> None:

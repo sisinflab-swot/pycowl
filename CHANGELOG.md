@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-11
+
 ### Added
 
 - `CowlWriter` and related APIs.
@@ -40,4 +42,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 [unreleased]: https://github.com/sisinflab-swot/pycowl/compare/stable...HEAD
+[0.1.1]: https://github.com/sisinflab-swot/pycowl/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/sisinflab-swot/pycowl/compare/base...v0.1.0

@@ -8,15 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Reader` and related APIs.
+- `Writer.set_default`.
+
+
 ## [0.1.1] - 2026-05-11
 
 ### Added
 
-- `CowlWriter` and related APIs.
+- `Writer` and related APIs.
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
 - `DataRange.that` fluent API.
 - `intersection_of` and `union_of` utility functions.
-- `CowlOntology.axiom_count`, `CowlOntology.primitive_count`, and `CowlOntology.imports`.
+- `Ontology.axiom_count`, `Ontology.primitive_count`, and `Ontology.imports`.
 - Type guard functions (`is_entity`, `is_primitive`, `is_axiom`, etc.).
 
 ### Changed

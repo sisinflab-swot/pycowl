@@ -126,6 +126,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlDeclAxiom: pass
     ctypedef struct CowlDisjUnionAxiom: pass
     ctypedef struct CowlEntity: pass
+    ctypedef struct CowlError: pass
     ctypedef struct CowlFacetRestr: pass
     ctypedef struct CowlFilter: pass
     ctypedef struct CowlFuncDataPropAxiom: pass
@@ -134,9 +135,6 @@ cdef extern from "cowl.h":
     ctypedef struct CowlInvObjProp: pass
     ctypedef struct CowlInvObjPropAxiom: pass
     ctypedef struct CowlIRI: pass
-    ctypedef struct CowlIterator:
-        void *ctx
-        cowl_ret (*for_each)(void *ctx, CowlAny *object)
     ctypedef struct CowlLiteral: pass
     ctypedef struct CowlNamedInd: pass
     ctypedef struct CowlNAryBool: pass
@@ -159,13 +157,8 @@ cdef extern from "cowl.h":
     ctypedef struct CowlObjPropRangeAxiom: pass
     ctypedef struct CowlObjQuant: pass
     ctypedef struct CowlOntology: pass
-    cdef struct CowlOntologyHeader:
-        CowlPrefixMap *pm
-        CowlIRI *iri
-        CowlIRI *version
-        const UVec_CowlObjectPtr *imports
-        const UVec_CowlObjectPtr *annotations
     ctypedef struct CowlPrefixMap: pass
+    ctypedef struct CowlReader: pass
     ctypedef struct CowlString: pass
     ctypedef struct CowlSubAnnotPropAxiom: pass
     ctypedef struct CowlSubClsAxiom: pass
@@ -176,6 +169,30 @@ cdef extern from "cowl.h":
     ctypedef struct CowlWriter: pass
     ctypedef struct UHash_CowlObjectPtr: pass
     ctypedef struct UVec_CowlObjectPtr: pass
+
+    ctypedef struct CowlChange:
+        cowl_change_type type
+        cowl_part part
+        void *value
+
+    ctypedef struct CowlChangeHandler:
+        void *ctx
+        cowl_ret (*handle)(void *ctx, CowlChange *change)
+
+    ctypedef struct CowlIterator:
+        void *ctx
+        cowl_ret (*for_each)(void *ctx, CowlAny *object)
+
+    ctypedef struct CowlOntologyHeader:
+        CowlPrefixMap *pm
+        CowlIRI *iri
+        CowlIRI *version
+        const UVec_CowlObjectPtr *imports
+        const UVec_CowlObjectPtr *annotations
+
+    ctypedef struct CowlPrefixDecl:
+        CowlString *prefix
+        CowlString *ns
 
     cdef enum CowlObjectType:
         COWL_OT_STRING
@@ -268,6 +285,10 @@ cdef extern from "cowl.h":
         COWL_CT_MAX
         COWL_CT_EXACT
 
+    cdef enum cowl_change_type:
+        COWL_CHANGE_ADD
+        COWL_CHANGE_REMOVE
+
     cdef enum CowlCharAxiomType:
         COWL_CAT_FUNC
         COWL_CAT_INV_FUNC
@@ -287,6 +308,14 @@ cdef extern from "cowl.h":
         COWL_NT_INTERSECT
         COWL_NT_UNION
 
+    cdef enum cowl_part:
+        COWL_PART_PREFIX_DECL
+        COWL_PART_IRI
+        COWL_PART_VERSION
+        COWL_PART_IMPORT
+        COWL_PART_ANNOTATION
+        COWL_PART_AXIOM
+
     cdef enum CowlPrimitiveType:
         COWL_PT_CLASS
         COWL_PT_DATATYPE
@@ -303,6 +332,8 @@ cdef extern from "cowl.h":
 
     void cowl_init()
     CowlPrefixMap *cowl_get_prefix_map()
+    void cowl_set_reader(CowlReader *reader)
+    void cowl_set_writer(CowlWriter *writer)
     CowlAny* cowl_retain(CowlAny *object)
     void cowl_release(CowlAny *object)
     CowlObjectType cowl_get_type(CowlAny *object)
@@ -399,6 +430,7 @@ cdef extern from "cowl.h":
         CowlVector *disjoints, CowlVector *annot)
     CowlClass *cowl_disj_union_axiom_get_class(CowlDisjUnionAxiom *axiom)
     CowlVector *cowl_disj_union_axiom_get_disjoints(CowlDisjUnionAxiom *axiom)
+    UString cowl_error_to_string(const CowlError *error)
     CowlFacetRestr *cowl_facet_restr(CowlIRI *facet, CowlLiteral *value)
     CowlIRI *cowl_facet_restr_get_facet(CowlFacetRestr *restr)
     CowlLiteral *cowl_facet_restr_get_value(CowlFacetRestr *restr)
@@ -528,6 +560,13 @@ cdef extern from "cowl.h":
     CowlIRI *cowl_prefix_map_parse_iri(CowlPrefixMap *map, UString str)
     CowlPrimitiveFlags cowl_primitive_flags_add_type(CowlPrimitiveFlags flags,
         CowlPrimitiveType type)
+    CowlReader *cowl_reader_default()
+    CowlReader *cowl_reader_functional()
+    const CowlError *cowl_reader_last_error(CowlReader *reader)
+    cowl_ret cowl_reader_read(CowlReader *reader, UIStream *stream, CowlChangeHandler handler)
+    CowlOntology *cowl_reader_read_ontology(CowlReader *reader, UIStream *stream, cowl_ret *ret)
+    CowlOntology *cowl_reader_read_ontology_from_path(CowlReader *reader, UString path, cowl_ret *ret)
+    cowl_ret cowl_reader_read_path(CowlReader *reader, UString path, CowlChangeHandler handler)
     UString cowl_ret_to_string(cowl_ret ret)
     CowlString *cowl_string(UString string)
     const UString *cowl_string_get_raw(CowlString *string)

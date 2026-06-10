@@ -41,6 +41,7 @@ cdef void _init():
     _TYPES[CowlObjectType.COWL_OT_FACET_RESTR] = FacetRestriction
     _TYPES[CowlObjectType.COWL_OT_ONTOLOGY] = Ontology
     _TYPES[CowlObjectType.COWL_OT_PREFIX_MAP] = PrefixMap
+    _TYPES[CowlObjectType.COWL_OT_READER] = Reader
     _TYPES[CowlObjectType.COWL_OT_WRITER] = Writer
     _TYPES[CowlObjectType.COWL_OT_ANNOTATION] = Annotation
     _TYPES[CowlObjectType.COWL_OT_ANNOT_PROP] = AnnotationProperty
@@ -189,9 +190,10 @@ cdef class Ptr:
 cdef Ptr NULLPtr = Ptr.__new__(Ptr)
 
 
-cdef Exception as_exception(cowl_ret code):
+cdef Exception as_exception(cowl_ret code, str msg = None):
     cdef UString str = cowl_ret_to_string(code)
-    msg = ustring_to_str(&str, deinit=False).capitalize()
+    if not msg:
+        msg = ustring_to_str(&str, deinit=False).capitalize()
     if code == Ret.ERR_MEM:
         return MemoryError(msg)
     if code == Ret.ERR_BOUNDS:
@@ -201,6 +203,11 @@ cdef Exception as_exception(cowl_ret code):
     if code == Ret.ERR_SYNTAX:
         return SyntaxError(msg)
     return RuntimeError(msg)
+
+
+cdef str cowl_error_to_str(const CowlError *error):
+    cdef UString str = cowl_error_to_string(error)
+    return ustring_to_str(&str).capitalize()
 
 
 cdef inline UString ustring_wrap_bytes(bytes data):
@@ -517,6 +524,7 @@ class Position(IntFlag):
     SUBJECT = COWL_PS_SUBJECT
     PREDICATE = COWL_PS_PREDICATE
     OBJECT = COWL_PS_OBJECT
+    VALUE = COWL_PS_OBJECT
 
 
 # Base types
@@ -2064,14 +2072,7 @@ cdef class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
 
     @classmethod
     def read(cls, source: IOBase | Path | str) -> Ontology:
-        cdef cowl_ret ret
-        cdef UIStream stream = uistream_from_py(source)
-        cdef CowlOntology *ptr = cowl_ontology_from_stream(&stream, &ret)
-        uistream_deinit(&stream)
-        if cowl_is_err(ret):
-            cowl_release(ptr)
-            raise as_exception(ret)
-        return Object.wrap(ptr)
+        return Reader.default().read(source)
 
     @property
     def prefix_map(self) -> PrefixMap:
@@ -2351,6 +2352,36 @@ cdef class Header:
         return header
 
 
+cdef class Reader(Object):
+
+    @classmethod
+    def default(cls) -> Reader:
+        return Object.wrap(cowl_reader_default())
+
+    @classmethod
+    def set_default(cls, reader: Reader) -> None:
+        cowl_set_reader(<CowlReader *>reader.ptr)
+
+    @classmethod
+    def functional(cls) -> Reader:
+        return Object.wrap(cowl_reader_functional())
+
+    def __init__(self) -> None:
+        msg = "Use one of the available class methods to create a Reader instance."
+        raise NotImplementedError(msg)
+
+    def read(self, source: IOBase | Path | str) -> Ontology:
+        cdef CowlReader *reader = <CowlReader *>self.ptr
+        cdef cowl_ret ret
+        cdef UIStream stream = uistream_from_py(source)
+        cdef CowlOntology *onto = cowl_reader_read_ontology(reader, &stream, &ret)
+        uistream_deinit(&stream)
+        if cowl_is_err(ret):
+            cowl_release(onto)
+            raise as_exception(ret, cowl_error_to_str(cowl_reader_last_error(reader)))
+        return Object.wrap(onto)
+
+
 cdef class StreamWriter(Object):
     cdef UOStream stream
 
@@ -2402,6 +2433,10 @@ cdef class Writer(Object):
     @classmethod
     def default(cls) -> Writer:
         return Object.wrap(cowl_writer_default())
+
+    @classmethod
+    def set_default(cls, writer: Writer) -> None:
+        cowl_set_writer(<CowlWriter *>writer.ptr)
 
     @classmethod
     def functional(cls) -> Writer:

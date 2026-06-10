@@ -1654,6 +1654,27 @@ class Header:
     ) -> None:
         """Create an ontology header."""
 
+class Reader(Object):
+    """Object that can read OWL constructs."""
+
+    @classmethod
+    def default(cls) -> Reader:
+        """Return the default reader."""
+
+    @classmethod
+    def set_default(cls, reader: Reader) -> None:
+        """Set the default reader."""
+
+    @classmethod
+    def functional(cls) -> Reader:
+        """Return the functional syntax reader."""
+
+    def __init__(self) -> NoReturn:
+        """This class cannot be instantiated directly."""
+
+    def read(self, source: IOBase | Path | str) -> Ontology:
+        """Read an ontology from the specified source."""
+
 class StreamWriter(Object, AbstractContextManager[StreamWriter]):
     """Stream writer."""
 
@@ -1679,6 +1700,10 @@ class Writer(Object):
     @classmethod
     def default(cls) -> Writer:
         """Return the default writer."""
+
+    @classmethod
+    def set_default(cls, writer: Writer) -> None:
+        """Set the default writer."""
 
     @classmethod
     def functional(cls) -> Writer:

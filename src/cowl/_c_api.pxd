@@ -47,7 +47,7 @@ cdef extern from "ulib.h":
     void ustring_deinit(UString *str)
     UStrBuf ustrbuf()
     void ustrbuf_deinit(UStrBuf *buf)
-    const char *ustrbuf_data(UStrBuf *buf)
+    char *ustrbuf_data(UStrBuf *buf)
     int ustrbuf_length(UStrBuf *buf)
     UString ustrbuf_to_string(UStrBuf *buf)
 
@@ -486,7 +486,7 @@ cdef extern from "cowl.h":
     cowl_ret cowl_ontology_add_annot(CowlOntology *onto, CowlAnnotation *annot)
     cowl_ret cowl_ontology_add_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)
     cowl_ret cowl_ontology_add_import(CowlOntology *onto, CowlIRI *iri)
-    CowlOntology *cowl_ontology_at_path(UString path, cowl_ret *ret)
+    CowlOntology *cowl_ontology_from_path(UString path, cowl_ret *ret)
     int cowl_ontology_axiom_count(CowlOntology *onto)
     int cowl_ontology_axiom_count_for_primitive(CowlOntology *onto, CowlAnyPrimitive *primitive)
     int cowl_ontology_axiom_count_for_types(CowlOntology *onto, CowlAxiomFlags types)

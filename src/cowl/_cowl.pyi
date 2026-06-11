@@ -1669,6 +1669,10 @@ class Reader(Object):
     def functional(cls) -> Reader:
         """Return the functional syntax reader."""
 
+    @classmethod
+    def protocowl(cls) -> Reader:
+        """Return the ProtocOWL reader."""
+
     def __init__(self) -> NoReturn:
         """This class cannot be instantiated directly."""
 
@@ -1708,6 +1712,10 @@ class Writer(Object):
     @classmethod
     def functional(cls) -> Writer:
         """Return the functional syntax writer."""
+
+    @classmethod
+    def protocowl(cls, index_size: int = ..., encode_anonymous_individuals: bool = ...) -> Writer:
+        """Return the ProtocOWL writer."""
 
     def __init__(self) -> NoReturn:
         """This class cannot be instantiated directly."""

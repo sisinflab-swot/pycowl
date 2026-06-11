@@ -289,7 +289,7 @@ cdef ulib_ret pystream_free(void *ctx) noexcept:
 
 
 cdef UIStream uistream_from_py(src: IOBase | Path | str):
-    if isinstance(src, IOBase):
+    if not isinstance(src, Path | str):  # Checking for IOBase may fail for file-like objects.
         Py_INCREF(src)
         return uistream(<void *>src, pystream_read, pystream_reset, pystream_free)
     cdest = _as_bytes(src)
@@ -301,7 +301,7 @@ cdef UIStream uistream_from_py(src: IOBase | Path | str):
 
 
 cdef UOStream uostream_from_py(dst: IOBase | Path | str):
-    if isinstance(dst, IOBase):
+    if not isinstance(dst, Path | str):  # Checking for IOBase may fail for file-like objects.
         Py_INCREF(dst)
         return uostream(<void *>dst, pystream_write, NULL, pystream_reset, pystream_flush, pystream_free)
     cdest = _as_bytes(dst)
@@ -2260,6 +2260,9 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
     def __init__(self) -> None:
         self.ptr = cowl_prefix_map()
 
+    def __eq__(self, other: Object) -> bool:
+        return super(MutableMapping, self).__eq__(other)
+
     def __setitem__(self, prefix: str, ns: str) -> None:
         cdef Ptr p = cowl_string_from_str(prefix)
         cdef Ptr n = cowl_string_from_str(ns)
@@ -2366,6 +2369,10 @@ cdef class Reader(Object):
     def functional(cls) -> Reader:
         return Object.wrap(cowl_reader_functional())
 
+    @classmethod
+    def protocowl(cls) -> Reader:
+        return Object.wrap(cowl_reader_protocowl())
+
     def __init__(self) -> None:
         msg = "Use one of the available class methods to create a Reader instance."
         raise NotImplementedError(msg)
@@ -2441,6 +2448,17 @@ cdef class Writer(Object):
     @classmethod
     def functional(cls) -> Writer:
         return Object.wrap(cowl_writer_functional())
+
+    @classmethod
+    def protocowl(
+        cls,
+        index_size: int = COWL_PROTOCOWL_INDEX_SIZE_UNBOUNDED,
+        encode_anonymous_individuals: bool = True,
+    ) -> Writer:
+        cdef CowlWriter *writer = cowl_writer_protocowl()
+        cowl_writer_protocowl_set_index_size(writer, index_size)
+        cowl_writer_protocowl_set_encode_anon(writer, encode_anonymous_individuals)
+        return Object.wrap(writer)
 
     def __init__(self) -> None:
         msg = "Use one of the available class methods to create a Writer instance."

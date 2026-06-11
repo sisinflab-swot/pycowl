@@ -1,6 +1,6 @@
 from datetime import date
 from pathlib import Path
-from tempfile import TemporaryDirectory
+from tempfile import TemporaryFile
 
 import cowl
 
@@ -10,8 +10,9 @@ TEST_ONTO_PATH = RES_DIR / "test_onto.owl"
 
 
 def ontologies_match(a: cowl.Ontology, b: cowl.Ontology) -> bool:
-    assert str(a) == str(b)
+    assert a.prefix_map == b.prefix_map
     assert a.iri() == b.iri()
+    assert a.version() == b.version()
 
     a_axioms = set(a.axioms())
     b_axioms = set(b.axioms())
@@ -32,30 +33,35 @@ def ontologies_match(a: cowl.Ontology, b: cowl.Ontology) -> bool:
     return True
 
 
-def test_round_trip() -> None:
-    orig = cowl.Ontology.read(TEST_ONTO_PATH)
-
-    with TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp) / "test_onto_out.owl"
-        orig.write(tmp_path)
-        other = cowl.Ontology.read(tmp_path)
-
-    assert ontologies_match(orig, other)
+def round_trip_match(reader: cowl.Reader, writer: cowl.Writer) -> bool:
+    orig = cowl.Reader.functional().read(TEST_ONTO_PATH)
+    with TemporaryFile() as tmp:
+        writer.write(orig, tmp)
+        tmp.seek(0)
+        other = reader.read(tmp)
+    return ontologies_match(orig, other)
 
 
-def test_stream_round_trip() -> None:
-    orig = cowl.Ontology.read(TEST_ONTO_PATH)
-
-    with TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp) / "test_onto_out.owl"
-        writer = cowl.Writer.default()
-        with writer.stream(tmp_path) as stream:
+def stream_round_trip_match(reader: cowl.Reader, writer: cowl.Writer) -> bool:
+    orig = cowl.Reader.functional().read(TEST_ONTO_PATH)
+    with TemporaryFile() as tmp:
+        with writer.stream(tmp) as stream:
             stream.write(cowl.Header.from_ontology(orig))
             for axiom in orig.axioms():
                 stream.write(axiom)
-        other = cowl.Ontology.read(tmp_path)
+        tmp.seek(0)
+        other = reader.read(tmp)
+    return ontologies_match(orig, other)
 
-    assert ontologies_match(orig, other)
+
+def test_round_trip() -> None:
+    for reader, writer in (
+        (cowl.Reader.functional(), cowl.Writer.functional()),
+        (cowl.Reader.protocowl(), cowl.Writer.protocowl()),
+        (cowl.Reader.protocowl(), cowl.Writer.protocowl(index_size=16)),
+    ):
+        assert round_trip_match(reader, writer)
+        assert stream_round_trip_match(reader, writer)
 
 
 def test_editing() -> None:

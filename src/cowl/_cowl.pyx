@@ -2185,32 +2185,32 @@ cdef class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     cdef void _foreach_related(
         self,
         related: Object,
-        axiom_type: type[Axiom],
+        axiom_types: Types[Axiom],
         CowlIterator *iter,
         position: Position,
     ):
-        cdef CowlAxiomType t = _cowl_axiom_type(axiom_type)
-        cowl_ontology_iterate_related(<CowlOntology *>self.ptr, related.ptr, t, position.value, iter)
+        cdef CowlAxiomFlags flags = cowl_axiom_flags_from_py(axiom_types)
+        cowl_ontology_iterate_related(<CowlOntology *>self.ptr, related.ptr, flags, position.value, iter)
 
     def foreach_related(
         self,
         func: Callable[[Object], None],
         primitive: Object,
-        axiom_type: type[Axiom],
+        axiom_types: Types[Axiom],
         position: Position = Position.ANY,
     ) -> None:
         cdef CowlIterator iter = cowl_iterator_from_py(func)
-        self._foreach_related(primitive, axiom_type, &iter, position)
+        self._foreach_related(primitive, axiom_types, &iter, position)
 
     def related(
         self,
         primitive: Object,
-        axiom_type: type[Axiom],
+        axiom_types: Types[Axiom],
         position: Position = Position.ANY,
     ) -> Collection[Object]:
         cdef UVec_CowlObjectPtr vec = uvec_CowlObjectPtr()
         cdef CowlIterator iter = cowl_iterator_vec(&vec, True)
-        self._foreach_related(primitive, axiom_type, &iter, position)
+        self._foreach_related(primitive, axiom_types, &iter, position)
         return Object.wrap(cowl_vector_wrap(&vec))
 
     def _add(self, item: Object) -> None:

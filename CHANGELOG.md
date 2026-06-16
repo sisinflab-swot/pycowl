@@ -13,11 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ProtocOWL reader and writer (`Reader.protocowl`, `Writer.protocowl`).
 - `Writer.set_default`.
 
+### Changed
+- Support multiple axiom types in `Ontology.related` and `Ontology.foreach_related`.
+
 
 ## [0.1.1] - 2026-05-11
 
 ### Added
-
 - `Writer` and related APIs.
 - `ClassExpression.is_same_as` as an alias for `ClassExpression.is_equivalent_to`.
 - `DataRange.that` fluent API.
@@ -26,11 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type guard functions (`is_entity`, `is_primitive`, `is_axiom`, etc.).
 
 ### Changed
-
 - Replaced `Ontology` methods `at_path` and `to_path` with `read` and `write`.
 
 ### Fixed
-
 - Implemented `__and__` and `__or__` for `DataRange`.
 - `bool` values interpreted as `xsd:integer` literals.
 - Equality method accepting only Self for `Datatype` and `DatatypeRestriction`.
@@ -40,7 +40,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-04-13
 
 ### Added
-
 - Full OWL 2 data model.
 - Ability to edit ontologies.
 - Ability to query ontologies.

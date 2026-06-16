@@ -1573,7 +1573,7 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
         self,
         func: Callable[[Object], None],
         primitive: Primitive,
-        axiom_type: type[Axiom],
+        axiom_types: Types[Axiom],
         position: Position = ...,
     ) -> None:
         """
@@ -1586,7 +1586,7 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     def related(
         self,
         primitive: Primitive,
-        axiom_type: type[Axiom],
+        axiom_types: Types[Axiom],
         position: Position = ...,
     ) -> Collection[Object]:
         """

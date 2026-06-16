@@ -538,7 +538,7 @@ cdef extern from "cowl.h":
         CowlAxiomFilter *filter, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_imports(CowlOntology *onto, CowlIterator *iter)
     cowl_ret cowl_ontology_iterate_related(CowlOntology *onto, CowlAnyPrimitive *primitive,
-        CowlAxiomType type, CowlPosition position, CowlIterator *iter)
+        CowlAxiomFlags types, CowlPosition position, CowlIterator *iter)
     int cowl_ontology_primitive_count(CowlOntology *onto, CowlPrimitiveFlags flags)
     bint cowl_ontology_remove_annot(CowlOntology *onto, CowlAnnotation *annot)
     bint cowl_ontology_remove_axiom(CowlOntology *onto, CowlAnyAxiom *axiom)

@@ -3,7 +3,7 @@ import os
 from collections.abc import Collection as ABCCollection, Iterable, MutableMapping
 from cpython.ref cimport Py_INCREF, Py_DECREF
 from datetime import date, datetime
-from enum import IntFlag
+from enum import Enum, IntFlag
 from io import IOBase
 from libc.errno cimport errno
 from libc.string cimport memcpy
@@ -203,6 +203,18 @@ cdef Exception as_exception(cowl_ret code, str msg = None):
     if code == Ret.ERR_SYNTAX:
         return SyntaxError(msg)
     return RuntimeError(msg)
+
+
+cdef cowl_ret as_cowl_ret(Exception exc):
+    if isinstance(exc, MemoryError):
+        return Ret.ERR_MEM
+    if isinstance(exc, IndexError):
+        return Ret.ERR_BOUNDS
+    if isinstance(exc, OSError):
+        return Ret.ERR_IO
+    if isinstance(exc, SyntaxError):
+        return Ret.ERR_SYNTAX
+    return Ret.ERR
 
 
 cdef str cowl_error_to_str(const CowlError *error):
@@ -561,16 +573,12 @@ cdef class Object:
         if self.ptr:
             cowl_release(self.ptr)
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         cdef UString str_rep = cowl_to_string(self.ptr)
         return ustring_to_str(&str_rep)
 
-    def __repr__(self) -> str:
-        cdef UString str_rep = cowl_to_debug_string(self.ptr)
-        return ustring_to_str(&str_rep)
-
-    def __eq__(self, other: Object) -> bool:
-        return cowl_equals(self.ptr, other.ptr)
+    def __eq__(self, other: Object | None) -> bool:
+        return False if other is None else cowl_equals(self.ptr, (<Object>other).ptr)
 
     def __hash__(self) -> int:
         return hash(cowl_hash(self.ptr))
@@ -754,6 +762,12 @@ cdef class IRI(Object, Primitive, HasIRI):
 
     def __init__(self, prefix: str, suffix: str | None = None) -> None:
         self.ptr = _iri_from_prefix_suffix(prefix, suffix) if suffix else _iri_from_str(prefix)
+
+    def __str__(self) -> str:
+        return super().__repr__()
+
+    def __repr__(self) -> str:
+        return f"IRI({str(self)})"
 
     def __call__(self, value: Literal | LiteralValue, dt: Datatype | None = None) -> FacetRestriction:
         return FacetRestriction(self, _as_literal(value, dt))
@@ -2227,6 +2241,10 @@ cdef class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
         for item in args:
             self._add(item)
 
+    def change(self, *args: Change) -> None:
+        for change in args:
+            change.apply(self)
+
     def _remove(self, item: Object) -> None:
         if item.is_axiom():
             cowl_ontology_remove_axiom(<CowlOntology *>self.ptr, item.ptr)
@@ -2355,6 +2373,133 @@ cdef class Header:
         return header
 
 
+class ChangeType(Enum):
+    ADD = COWL_CHANGE_ADD
+    REMOVE = COWL_CHANGE_REMOVE
+
+
+cdef class PrefixDeclaration:
+    cdef CowlPrefixDecl raw
+
+    @staticmethod
+    cdef PrefixDeclaration from_cowl(CowlPrefixDecl *decl):
+        cdef PrefixDeclaration obj = PrefixDeclaration.__new__(PrefixDeclaration)
+        obj.raw = decl[0]
+        cowl_retain(decl.prefix)
+        cowl_retain(decl.ns)
+        return obj
+
+    @property
+    def prefix(self) -> str:
+        return cowl_string_to_str(self.raw.prefix)
+
+    @property
+    def namespace(self) -> str:
+        return cowl_string_to_str(self.raw.ns)
+
+    def __init__(self, prefix: str, namespace: str) -> None:
+        self.raw.prefix = cowl_string_from_str_raw(prefix)
+        self.raw.ns = cowl_string_from_str_raw(namespace)
+
+    def __dealloc__(self) -> None:
+        cowl_release(self.raw.prefix)
+        cowl_release(self.raw.ns)
+
+    def __repr__(self) -> str:
+        return f"PrefixDeclaration(prefix={self.prefix}, namespace={self.namespace})"
+
+
+cdef class ChangeIRI(IRI):
+    def __init__(self, iri: str | IRI | None = None) -> None:
+        if iri is None:
+            self.ptr = NULL
+        elif isinstance(iri, IRI):
+            self.ptr = cowl_retain((<IRI>iri).ptr)
+        else:
+            super().__init__(iri)
+
+
+cdef class OntologyIRI(ChangeIRI):
+    pass
+
+
+cdef class VersionIRI(ChangeIRI):
+    pass
+
+
+cdef class ImportIRI(ChangeIRI):
+    pass
+
+
+cdef class Change:
+    cdef readonly object type
+    cdef readonly object value
+
+    @staticmethod
+    cdef Change from_cowl(CowlChange *change):
+        if change.part == COWL_PART_AXIOM:
+            value = Object.retain(change.value)
+        elif change.part == COWL_PART_PREFIX_DECL:
+            value = PrefixDeclaration.from_cowl(<CowlPrefixDecl *>change.value)
+        elif change.part == COWL_PART_ANNOTATION:
+            value = Object.retain(change.value)
+        elif change.part == COWL_PART_IRI:
+            value = Object.retain_as(OntologyIRI, change.value)
+        elif change.part == COWL_PART_VERSION:
+            value = Object.retain_as(VersionIRI, change.value)
+        elif change.part == COWL_PART_IMPORT:
+            value = Object.retain_as(ImportIRI, change.value)
+        else:
+            raise ValueError(f"Invalid change part: {change.part}")
+        return Change(ChangeType(change.type), value)
+
+    @classmethod
+    def add(cls, value: object) -> Change:
+        return Change(ChangeType.ADD, value)
+
+    @classmethod
+    def remove(cls, value: object) -> Change:
+        return Change(ChangeType.REMOVE, value)
+
+    def __init__(self, type: ChangeType, value: object) -> None:
+        self.type: ChangeType = type
+        self.value = value
+
+    def __repr__(self) -> str:
+        return f"Change(type={self.type}, value={self.value})"
+
+    cdef CowlChange to_cowl(self):
+        cdef CowlChange change
+        change.type = self.type.value
+
+        if isinstance(self.value, Axiom):
+            change.part = COWL_PART_AXIOM
+        elif isinstance(self.value, PrefixDeclaration):
+            change.part = COWL_PART_PREFIX_DECL
+        elif isinstance(self.value, Annotation):
+            change.part = COWL_PART_ANNOTATION
+        elif isinstance(self.value, OntologyIRI):
+            change.part = COWL_PART_IRI
+        elif isinstance(self.value, VersionIRI):
+            change.part = COWL_PART_VERSION
+        elif isinstance(self.value, ImportIRI):
+            change.part = COWL_PART_IMPORT
+        else:
+            raise TypeError(f"Unsupported change value type: {type(self.value).__name__}")
+
+        if change.part == COWL_PART_PREFIX_DECL:
+            change.value = &(<PrefixDeclaration>self.value).raw
+        else:
+            change.value = (<Object>self.value).ptr
+
+        return change
+
+    def apply(self, ontology: Ontology) -> None:
+        cdef cowl_ret ret = cowl_change_apply(self.to_cowl(), <CowlOntology *>ontology.ptr)
+        if cowl_is_err(ret):
+            raise as_exception(ret)
+
+
 cdef class Reader(Object):
 
     @classmethod
@@ -2387,6 +2532,27 @@ cdef class Reader(Object):
             cowl_release(onto)
             raise as_exception(ret, cowl_error_to_str(cowl_reader_last_error(reader)))
         return Object.wrap(onto)
+
+    def stream(self, source: IOBase | Path | str, handler: Callable[[Change], None]) -> None:
+        cdef CowlChangeHandler change_handler
+        change_handler.ctx = <void *>handler
+        change_handler.handle = _handle_change
+
+        cdef UIStream stream = uistream_from_py(source)
+        cdef CowlReader *reader = <CowlReader *>self.ptr
+        cdef cowl_ret ret = cowl_reader_read(reader, &stream, change_handler)
+        uistream_deinit(&stream)
+
+        if cowl_is_err(ret):
+            raise as_exception(ret, cowl_error_to_str(cowl_reader_last_error(reader)))
+
+
+cdef cowl_ret _handle_change(void *ctx, CowlChange change) noexcept:
+    try:
+        (<object>ctx)(Change.from_cowl(&change))
+    except Exception as e:
+        return as_cowl_ret(e)
+    return Ret.OK
 
 
 cdef class StreamWriter(Object):

@@ -50,7 +50,8 @@ def stream_round_trip_match(reader: cowl.Reader, writer: cowl.Writer) -> bool:
             for axiom in orig.axioms():
                 stream.write(axiom)
         tmp.seek(0)
-        other = reader.read(tmp)
+        other = cowl.Ontology()
+        reader.stream(tmp, other.change)
     return ontologies_match(orig, other)
 
 

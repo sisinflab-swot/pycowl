@@ -13,7 +13,7 @@ def main() -> None:
 
     # Update the global prefix map for pretty-printing.
     prefix_map = cowl.PrefixMap.default()
-    prefix_map.update({k: v for k, v in onto.prefix_map.items() if k != "pizza"})
+    prefix_map.update(onto.prefix_map)
 
     # Retrieve and print all classes.
     print("Classes:")
@@ -43,6 +43,14 @@ def main() -> None:
     # Retrieve and print all subclasses of the "CheeseTopping" class.
     print("\nSubclasses of 'CheeseTopping':")
     onto.foreach_related(print, cheese_topping, cowl.SubClassOf, cowl.Position.LEFT)
+
+    # Alternative way to carry out the same query.
+    print("\nSubclasses of 'CheeseTopping' (alt):")
+    onto.foreach_axiom(
+        lambda ax: print(ax.child()) if ax.parent() == cheese_topping else None,
+        types=cowl.SubClassOf,
+        primitives=cheese_topping,
+    )
 
     # Each of the above queries can also return an iterable collection of constructs.
     # We will use this feature to print the toppings of the "Parmense" pizza.

@@ -177,7 +177,7 @@ cdef extern from "cowl.h":
 
     ctypedef struct CowlChangeHandler:
         void *ctx
-        cowl_ret (*handle)(void *ctx, CowlChange *change)
+        cowl_ret (*handle)(void *ctx, CowlChange change)
 
     ctypedef struct CowlIterator:
         void *ctx
@@ -381,6 +381,9 @@ cdef extern from "cowl.h":
     cowl_ret cowl_axiom_filter_add_primitive(CowlAxiomFilter *filter, CowlAnyPrimitive *primitive)
     void cowl_axiom_filter_set_closure(CowlAxiomFilter *filter, CowlFilter closure)
     CowlAxiomFlags cowl_axiom_flags_add_type(CowlAxiomFlags flags, CowlAxiomType type)
+    cowl_ret cowl_change_apply(CowlChange change, CowlOntology *onto)
+    cowl_ret cowl_change_handler_handle(CowlChangeHandler *handler, CowlChange change)
+    CowlChangeHandler cowl_change_handler_to_ontology(CowlOntology *onto)
     CowlClass *cowl_class(CowlIRI *iri)
     CowlClsAssertAxiom *cowl_cls_assert_axiom(CowlAnyClsExp *exp, CowlAnyIndividual *ind, CowlVector *annot)
     CowlClsExp *cowl_cls_assert_axiom_get_cls_exp(CowlClsAssertAxiom *axiom)

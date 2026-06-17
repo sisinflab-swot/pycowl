@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `Reader` and related APIs.
+- Ability to read OWL documents as streams of constructs (`Reader.stream`).
 - ProtocOWL reader and writer (`Reader.protocowl`, `Writer.protocowl`).
+- `Change` and related APIs.
 - `Writer.set_default`.
 
 ### Changed

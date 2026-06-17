@@ -7,7 +7,7 @@ from collections.abc import (
 )
 from contextlib import AbstractContextManager
 from datetime import date, datetime
-from enum import IntFlag, auto
+from enum import Enum, IntFlag, auto
 from io import IOBase
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
@@ -1616,6 +1616,9 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     def add(self, *args: Annotation | Axiom | IRI) -> None:
         """Add ontology items."""
 
+    def change(self, *args: Change) -> None:
+        """Apply changes to the ontology."""
+
     def remove(self, *args: Annotation | Axiom | IRI) -> None:
         """Remove ontology items."""
 
@@ -1654,6 +1657,62 @@ class Header:
     ) -> None:
         """Create an ontology header."""
 
+class ChangeType(Enum):
+    """Ontology change type."""
+
+    ADD = auto()
+    REMOVE = auto()
+
+class PrefixDeclaration:
+    """Prefix declaration."""
+    @property
+    def prefix(self) -> str:
+        """Return the prefix."""
+    @property
+    def namespace(self) -> str:
+        """Return the namespace."""
+
+class OntologyIRI(IRI):
+    """Ontology IRI."""
+    def __init__(self, iri: str | IRI | None = None) -> None:
+        """Create an ontology IRI."""
+
+class VersionIRI(IRI):
+    """Version IRI."""
+    def __init__(self, iri: str | IRI | None = None) -> None:
+        """Create a version IRI."""
+
+class ImportIRI(IRI):
+    """Import IRI."""
+    def __init__(self, iri: str | IRI) -> None:
+        """Create an import IRI."""
+
+type ChangeValue = PrefixDeclaration | OntologyIRI | VersionIRI | ImportIRI | Annotation | Axiom
+"""Change value type."""
+
+class Change:
+    """Ontology change."""
+    @property
+    def type(self) -> ChangeType:
+        """Return the change type."""
+    @property
+    def value(self) -> ChangeValue:
+        """Return the change value."""
+
+    @classmethod
+    def add(cls, value: ChangeValue) -> Change:
+        """Create an add change."""
+
+    @classmethod
+    def remove(cls, value: ChangeValue) -> Change:
+        """Create a remove change."""
+
+    def __init__(self, change_type: ChangeType, value: ChangeValue) -> None:
+        """Create an ontology change."""
+
+    def apply(self, ontology: Ontology) -> None:
+        """Apply the change to an ontology."""
+
 class Reader(Object):
     """Object that can read OWL constructs."""
 
@@ -1678,6 +1737,9 @@ class Reader(Object):
 
     def read(self, source: IOBase | Path | str) -> Ontology:
         """Read an ontology from the specified source."""
+
+    def stream(self, source: IOBase | Path | str, handler: Callable[[Change], None]) -> None:
+        """Read an ontology from the specified source, calling the handler for each change."""
 
 class StreamWriter(Object, AbstractContextManager[StreamWriter]):
     """Stream writer."""

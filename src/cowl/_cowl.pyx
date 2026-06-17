@@ -902,10 +902,10 @@ cdef class NAryClassExpression(ClassExpression):
             else CowlNAryType.COWL_NT_UNION
         )
         cdef Ptr vec = cowl_vector_from_py(args)
-        self.ptr = cowl_nary_bool(ctype, <CowlVector *>vec.p)
+        self.ptr = cowl_nary_cls(ctype, <CowlVector *>vec.p)
 
     def operands(self) -> Collection:
-        return Object.retain(cowl_nary_bool_get_operands(<CowlNAryBool *>self.ptr))
+        return Object.retain(cowl_nary_cls_get_operands(<CowlNAryCls *>self.ptr))
 
 
 cdef class ObjectIntersectionOf(NAryClassExpression):

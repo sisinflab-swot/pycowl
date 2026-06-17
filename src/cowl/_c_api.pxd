@@ -137,7 +137,7 @@ cdef extern from "cowl.h":
     ctypedef struct CowlIRI: pass
     ctypedef struct CowlLiteral: pass
     ctypedef struct CowlNamedInd: pass
-    ctypedef struct CowlNAryBool: pass
+    ctypedef struct CowlNAryCls: pass
     ctypedef struct CowlNAryClsAxiom: pass
     ctypedef struct CowlNAryData: pass
     ctypedef struct CowlNAryDataPropAxiom: pass
@@ -462,8 +462,8 @@ cdef extern from "cowl.h":
     CowlString *cowl_literal_get_value(CowlLiteral *literal)
     CowlString *cowl_literal_get_lang(CowlLiteral *literal)
     CowlNamedInd *cowl_named_ind(CowlIRI *iri)
-    CowlNAryBool *cowl_nary_bool(CowlNAryType type, CowlVector *operands)
-    CowlVector *cowl_nary_bool_get_operands(CowlNAryBool *exp)
+    CowlNAryCls *cowl_nary_cls(CowlNAryType type, CowlVector *operands)
+    CowlVector *cowl_nary_cls_get_operands(CowlNAryCls *exp)
     CowlNAryClsAxiom *cowl_nary_cls_axiom(CowlNAryAxiomType type,
         CowlVector *classes, CowlVector *annot)
     CowlVector *cowl_nary_cls_axiom_get_classes(CowlNAryClsAxiom *axiom)

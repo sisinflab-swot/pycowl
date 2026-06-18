@@ -8,7 +8,6 @@ from collections.abc import (
 from contextlib import AbstractContextManager
 from datetime import date, datetime
 from enum import Enum, IntFlag, auto
-from io import IOBase
 from pathlib import Path
 from typing import NoReturn, Protocol, overload
 
@@ -17,8 +16,15 @@ if sys.version_info >= (3, 13):
 else:
     from typing_extensions import TypeIs
 
+if sys.version_info >= (3, 14):
+    from io import Reader as IOReader, Writer as IOWriter
+else:
+    from typing_extensions import Reader as IOReader, Writer as IOWriter
+
 type Types[T] = type[T] | tuple[type[T], ...]
 type OneOrMany[T] = T | Iterable[T]
+type BytesReader = IOReader[bytes]
+type BytesWriter = IOWriter[bytes]
 
 # Utilities
 
@@ -1510,7 +1516,7 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     """Ontology."""
 
     @classmethod
-    def read(cls, source: IOBase | Path | str) -> Ontology:
+    def read(cls, source: BytesReader | Path | str) -> Ontology:
         """Read an ontology from the specified source."""
 
     @property
@@ -1622,7 +1628,7 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     def remove(self, *args: Annotation | Axiom | IRI) -> None:
         """Remove ontology items."""
 
-    def write(self, destination: IOBase | Path | str) -> None:
+    def write(self, destination: BytesWriter | Path | str) -> None:
         """Write the ontology to the specified destination."""
 
 class PrefixMap(Object, MutableMapping[str, str], PrimitiveFactory):
@@ -1732,13 +1738,17 @@ class Reader(Object):
     def protocowl(cls) -> Reader:
         """Return the ProtocOWL reader."""
 
+    @property
+    def name(self) -> str:
+        """Return the name of the reader."""
+
     def __init__(self) -> NoReturn:
         """This class cannot be instantiated directly."""
 
-    def read(self, source: IOBase | Path | str) -> Ontology:
+    def read(self, source: BytesReader | Path | str) -> Ontology:
         """Read an ontology from the specified source."""
 
-    def stream(self, source: IOBase | Path | str, handler: Callable[[Change], None]) -> None:
+    def stream(self, source: BytesReader | Path | str, handler: Callable[[Change], None]) -> None:
         """Read an ontology from the specified source, calling the handler for each change."""
 
 class StreamWriter(Object, AbstractContextManager[StreamWriter]):
@@ -1779,13 +1789,16 @@ class Writer(Object):
     def protocowl(cls, index_size: int = ..., encode_anonymous_individuals: bool = ...) -> Writer:
         """Return the ProtocOWL writer."""
 
+    def name(self) -> str:
+        """Return the name of the writer."""
+
     def __init__(self) -> NoReturn:
         """This class cannot be instantiated directly."""
 
-    def write(self, ontology: Ontology, destination: IOBase | Path | str) -> int:
+    def write(self, ontology: Ontology, destination: BytesWriter | Path | str) -> int:
         """Write an ontology to the specified destination."""
 
-    def stream(self, destination: IOBase | Path | str) -> StreamWriter:
+    def stream(self, destination: BytesWriter | Path | str) -> StreamWriter:
         """Return a stream writer for the specified destination."""
 
 # Vocabularies

@@ -2518,6 +2518,10 @@ cdef class Reader(Object):
     def protocowl(cls) -> Reader:
         return Object.wrap(cowl_reader_protocowl())
 
+    @property
+    def name(self) -> str:
+        return cowl_reader_get_name(<CowlReader *>self.ptr).decode()
+
     def __init__(self) -> None:
         msg = "Use one of the available class methods to create a Reader instance."
         raise NotImplementedError(msg)
@@ -2579,7 +2583,8 @@ cdef class StreamWriter(Object):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        self.write_footer()
+        if exc_type is None:
+            self.write_footer()
         self.close()
 
     def write(self, construct: Header | Axiom) -> None:
@@ -2621,10 +2626,15 @@ cdef class Writer(Object):
         index_size: int = COWL_PROTOCOWL_INDEX_SIZE_UNBOUNDED,
         encode_anonymous_individuals: bool = True,
     ) -> Writer:
+        index_size = index_size if index_size >= 0 else COWL_PROTOCOWL_INDEX_SIZE_UNBOUNDED
         cdef CowlWriter *writer = cowl_writer_protocowl()
         cowl_writer_protocowl_set_index_size(writer, index_size)
         cowl_writer_protocowl_set_encode_anon(writer, encode_anonymous_individuals)
         return Object.wrap(writer)
+
+    @property
+    def name(self) -> str:
+        return cowl_writer_get_name(<CowlWriter *>self.ptr).decode()
 
     def __init__(self) -> None:
         msg = "Use one of the available class methods to create a Writer instance."

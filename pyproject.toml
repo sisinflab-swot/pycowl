@@ -19,6 +19,9 @@ dynamic = ["version"]
 [project.optional-dependencies]
 dev = ["pytest"]
 
+[project.scripts]
+pycowl = "cowl._cli:app"
+
 [project.urls]
 Homepage = "https://github.com/sisinflab-swot/pycowl"
 Repository = "https://github.com/sisinflab-swot/pycowl"

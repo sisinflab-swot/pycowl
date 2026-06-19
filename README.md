@@ -14,6 +14,14 @@ Refer to the [examples][examples] to get started. The library's [stub file][stub
 has docstrings and uses type annotations extensively, so the autocomplete feature
 of IDEs/editors will likely provide most of the needed guidance.
 
+### CLI usage
+
+PyCowl can also be used as a CLI tool:
+
+- `pycowl convert`: converts ontologies between supported formats.
+- `pycowl diff`: shows changes between ontologies.
+- `pycowl stats`: displays basic statistics about ontologies.
+
 ### Copyright and License
 
 Copyright © 2026 [SisInf Lab][swot], [Polytechnic University of Bari][poliba]

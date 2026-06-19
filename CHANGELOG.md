@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Reader` and related APIs.
 - Ability to read OWL documents as streams of constructs (`Reader.stream`).
 - ProtocOWL reader and writer (`Reader.protocowl`, `Writer.protocowl`).
+- CLI tools: `convert`, `diff`, `stats`.
 - `Change` and related APIs.
 - `Reader.name` and `Writer.name`.
 - `Writer.set_default`.

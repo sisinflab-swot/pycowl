@@ -17,8 +17,10 @@ def _axiom_types(axiom_type: type[cowl.Axiom] = cowl.Axiom) -> Iterator[type[cow
             yield sub_type
 
 
-def _compute_stats(onto: cowl.Ontology) -> dict[str, int]:
-    stats = {
+def _stats(onto: cowl.Ontology, fmt: str, read_bytes: int) -> dict[str, str | int]:
+    stats: dict[str, str | int] = {
+        "Format": fmt,
+        "Bytes": read_bytes,
         "Axioms": onto.axiom_count(),
         "Classes": onto.primitive_count(cowl.Class),
         "Datatypes": onto.primitive_count(cowl.Datatype),
@@ -34,7 +36,7 @@ def _compute_stats(onto: cowl.Ontology) -> dict[str, int]:
 
 
 def _stats_sub(args: argparse.Namespace) -> int:
-    stats = _compute_stats(load_ontology(args.input_path, fmt=args.source_format))
+    stats = _stats(*load_ontology(args.input_path, fmt=args.source_format, return_meta=True))
 
     with Path(args.output_path).open("w") if args.output_path else sys.stdout as out_file:
         json.dump(stats, out_file, indent=4)

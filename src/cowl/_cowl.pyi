@@ -1742,6 +1742,10 @@ class Reader(Object):
     def name(self) -> str:
         """Return the name of the reader."""
 
+    @property
+    def read_bytes(self) -> int:
+        """Return the number of bytes read so far."""
+
     def __init__(self) -> NoReturn:
         """This class cannot be instantiated directly."""
 

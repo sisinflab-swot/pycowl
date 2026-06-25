@@ -2501,6 +2501,7 @@ cdef class Change:
 
 
 cdef class Reader(Object):
+    cdef readonly int read_bytes
 
     @classmethod
     def default(cls) -> Reader:
@@ -2531,6 +2532,7 @@ cdef class Reader(Object):
         cdef cowl_ret ret
         cdef UIStream stream = uistream_from_py(source)
         cdef CowlOntology *onto = cowl_reader_read_ontology(reader, &stream, &ret)
+        self.read_bytes += stream.read_bytes
         uistream_deinit(&stream)
         if cowl_is_err(ret):
             cowl_release(onto)
@@ -2545,6 +2547,7 @@ cdef class Reader(Object):
         cdef UIStream stream = uistream_from_py(source)
         cdef CowlReader *reader = <CowlReader *>self.ptr
         cdef cowl_ret ret = cowl_reader_read(reader, &stream, change_handler)
+        self.read_bytes += stream.read_bytes
         uistream_deinit(&stream)
 
         if cowl_is_err(ret):

@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ProtocOWL reader and writer (`Reader.protocowl`, `Writer.protocowl`).
 - CLI tools: `convert`, `diff`, `stats`.
 - `Change` and related APIs.
-- `Reader.name` and `Writer.name`.
-- `Writer.set_default`.
+- `Writer.name`, `Writer.set_default`.
+- `PrefixMap.declarations_iter`.
 
 ### Changed
 - Support multiple axiom types in `Ontology.related` and `Ontology.foreach_related`.

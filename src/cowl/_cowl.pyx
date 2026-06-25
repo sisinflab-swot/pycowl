@@ -2165,7 +2165,7 @@ cdef class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     ):
         cdef CowlOntology *onto = <CowlOntology *>self.ptr
         cdef CowlAxiomFilter filter
-        primitives = _as_iterable(primitives) if primitives else ()
+        primitives = _as_tuple(primitives) if primitives else ()
 
         if not types and len(primitives) == 1:
             cowl_ontology_iterate_axioms_for_primitive(onto, (<Object>primitives[0]).ptr, iter)
@@ -2312,6 +2312,10 @@ cdef class PrefixMap(Object, MutableMapping, PrimitiveFactory):
         for prefix, _ in self.items_iter():
             yield prefix
 
+    def declarations_iter(self) -> Iterator[PrefixDeclaration]:
+        for prefix, ns in self.items_iter():
+            yield PrefixDeclaration(prefix, ns)
+
     def items_iter(self) -> Iterator[tuple[str, str]]:
         cdef CowlTable *table = cowl_prefix_map_get_table(<CowlPrefixMap *>self.ptr, False)
         cdef const UHash_CowlObjectPtr *h = cowl_table_get_data(table)
@@ -2406,7 +2410,7 @@ cdef class PrefixDeclaration:
         cowl_release(self.raw.ns)
 
     def __repr__(self) -> str:
-        return f"PrefixDeclaration(prefix={self.prefix}, namespace={self.namespace})"
+        return f"Prefix({self.prefix}:=<{self.namespace}>)"
 
 
 cdef class ChangeIRI(IRI):

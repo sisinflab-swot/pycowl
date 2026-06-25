@@ -3,6 +3,7 @@ from collections.abc import (
     Callable,
     Collection as ABCCollection,
     Iterable,
+    Iterator,
     MutableMapping,
 )
 from contextlib import AbstractContextManager
@@ -1641,8 +1642,11 @@ class PrefixMap(Object, MutableMapping[str, str], PrimitiveFactory):
     def __init__(self) -> None:
         """Create a prefix map."""
 
-    def items_iter(self) -> Iterable[tuple[str, str]]:
+    def items_iter(self) -> Iterator[tuple[str, str]]:
         """Iterate over prefix bindings."""
+
+    def declarations_iter(self) -> Iterator[PrefixDeclaration]:
+        """Iterate over prefix declarations."""
 
 # Readers and writers
 

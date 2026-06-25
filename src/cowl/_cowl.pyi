@@ -1551,6 +1551,7 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     def foreach_axiom(
         self,
         func: Callable[[Axiom], None],
+        *,
         primitives: OneOrMany[Primitive] | None = None,
     ) -> None:
         """Apply a function to each axiom that references all the primitives."""
@@ -1559,18 +1560,20 @@ class Ontology(Object, Annotated, HasPrimitives, PrimitiveFactory):
     def foreach_axiom[T: Axiom](
         self,
         func: Callable[[T], None],
+        *,
         types: Types[T],
         primitives: OneOrMany[Primitive] | None = None,
     ) -> None:
         """Apply a function to each axiom of the given types that references all the primitives."""
 
     @overload
-    def axioms(self, primitives: OneOrMany[Primitive] | None = None) -> Collection[Axiom]:
+    def axioms(self, *, primitives: OneOrMany[Primitive] | None = None) -> Collection[Axiom]:
         """Return the axioms that reference all the primitives."""
 
     @overload
     def axioms[T: Axiom](
         self,
+        *,
         types: Types[T],
         primitives: OneOrMany[Primitive] | None = None,
     ) -> Collection[T]:

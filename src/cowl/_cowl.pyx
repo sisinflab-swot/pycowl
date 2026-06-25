@@ -2561,6 +2561,8 @@ cdef class Reader(Object):
 cdef cowl_ret _handle_change(void *ctx, CowlChange change) noexcept:
     try:
         (<object>ctx)(Change.from_cowl(&change))
+    except StopIteration:
+        return Ret.NO
     except Exception as e:
         return as_cowl_ret(e)
     return Ret.OK
